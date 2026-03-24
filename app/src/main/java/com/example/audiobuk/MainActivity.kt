@@ -1,10 +1,12 @@
 package com.example.audiobuk
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -19,14 +21,32 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AudiobukTheme {
-                MainApp()
+                val viewModel: MusicViewModel = viewModel()
+                
+                LaunchedEffect(intent) {
+                    handleIntent(intent, viewModel)
+                }
+                
+                MainApp(viewModel)
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // This is called if the activity is already running (e.g. user clicks notification while app is in background)
+        setIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?, viewModel: MusicViewModel) {
+        if (intent?.action == "com.example.audiobuk.OPEN_PLAYER") {
+            viewModel.setShowPlayerScreen(true)
         }
     }
 }
 
 @Composable
-fun MainApp(viewModel: MusicViewModel = viewModel()) {
+fun MainApp(viewModel: MusicViewModel) {
     val showPlayerScreen by viewModel.showPlayerScreen.collectAsState()
 
     if (showPlayerScreen) {
