@@ -12,21 +12,40 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Green80,
-    secondary = GreenGrey80,
-    tertiary = LightGreen80
+    primary = DarkPrimary,
+    onPrimary = DarkOnPrimary,
+    primaryContainer = DarkPrimaryContainer,
+    onPrimaryContainer = DarkOnPrimaryContainer,
+    secondary = DarkSecondary,
+    onSecondary = DarkOnPrimary,
+    secondaryContainer = DarkSecondaryContainer,
+    onSecondaryContainer = DarkOnPrimaryContainer,
+    background = DarkBackground,
+    surface = DarkSurface,
+    surfaceVariant = DarkSurfaceVariant,
+    onSurface = DarkPrimary,
+    onBackground = DarkPrimary
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Green40,
-    secondary = GreenGrey40,
-    tertiary = LightGreen40
+    primary = LightPrimary,
+    onPrimary = LightOnPrimary,
+    primaryContainer = LightPrimaryContainer,
+    onPrimaryContainer = LightOnPrimaryContainer,
+    secondary = LightSecondary,
+    onSecondary = LightOnPrimary,
+    secondaryContainer = LightSecondaryContainer,
+    onSecondaryContainer = LightOnPrimaryContainer,
+    background = LightBackground,
+    surface = LightSurface,
+    surfaceVariant = LightSurfaceVariant,
+    onSurface = LightPrimary,
+    onBackground = LightPrimary
 )
 
 @Composable
 fun AudiobukTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Set dynamicColor to false to use our custom green theme
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
