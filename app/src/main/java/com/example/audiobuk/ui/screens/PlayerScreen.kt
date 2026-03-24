@@ -2,6 +2,8 @@ package com.example.audiobuk.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -69,12 +71,21 @@ fun PlayerScreen(viewModel: MusicViewModel, onBack: () -> Unit) {
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     var showChaptersDialog by remember { mutableStateOf(false) }
 
+    // State for local slider position to avoid jumping
     var sliderPosition by remember { mutableLongStateOf(0L) }
-    var isDragging by remember { mutableStateOf(false) }
+    var isDraggingGesture by remember { mutableStateOf(false) }
+    var isSliderActive by remember { mutableStateOf(false) }
     var isPrecise by remember { mutableStateOf(false) }
+    
+    val sliderInteractionSource = remember { MutableInteractionSource() }
+    val isSliderDragged by sliderInteractionSource.collectIsDraggedAsState()
+    
+    // Combined dragging state
+    val isCurrentlyDragging = isDraggingGesture || isSliderDragged || isSliderActive
 
+    // Sync slider with global position ONLY when not dragging
     LaunchedEffect(globalPosition) {
-        if (!isDragging) {
+        if (!isCurrentlyDragging) {
             sliderPosition = globalPosition
         }
     }
@@ -218,20 +229,23 @@ fun PlayerScreen(viewModel: MusicViewModel, onBack: () -> Unit) {
             Column(
                 modifier = Modifier.pointerInput(Unit) {
                     detectDragGestures(
-                        onDragStart = { isDragging = true },
+                        onDragStart = { 
+                            isDraggingGesture = true 
+                            isPrecise = false
+                        },
                         onDragEnd = {
-                            isDragging = false
+                            isDraggingGesture = false
                             isPrecise = false
                             viewModel.seekToGlobal(sliderPosition)
                         },
                         onDragCancel = {
-                            isDragging = false
+                            isDraggingGesture = false
                             isPrecise = false
                         },
                         onDrag = { change, dragAmount ->
                             change.consume()
-                            // Move finger up for precise seeking
-                            isPrecise = change.position.y < -100 // Adjust sensitivity threshold
+                            // Move finger up for precise seeking (threshold 100px)
+                            isPrecise = change.position.y < -100 
 
                             val totalWidth = size.width.toFloat()
                             val sensitivity = if (isPrecise) 0.1f else 1.0f
@@ -256,16 +270,18 @@ fun PlayerScreen(viewModel: MusicViewModel, onBack: () -> Unit) {
                 Slider(
                     value = sliderPosition.toFloat(),
                     onValueChange = { 
-                        if (!isDragging) { // Only fallback if pointerInput is not active
-                             sliderPosition = it.toLong()
-                        }
+                        isSliderActive = true
+                        sliderPosition = it.toLong()
                     },
                     onValueChangeFinished = {
-                        if (!isDragging) {
+                        isSliderActive = false
+                        // Only seek here if we aren't already handling it via the custom gesture
+                        if (!isDraggingGesture) {
                             viewModel.seekToGlobal(sliderPosition)
                         }
                     },
                     valueRange = 0f..totalDuration.toFloat().coerceAtLeast(1f),
+                    interactionSource = sliderInteractionSource,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Row(
