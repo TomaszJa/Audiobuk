@@ -56,11 +56,13 @@ class AudioPlayer(context: Context, private val onProgressUpdate: (Uri, Long) ->
                     override fun onIsPlayingChanged(isPlaying: Boolean) {
                         _isPlaying.value = isPlaying
                         if (!isPlaying) {
+                            // Save when paused
                             saveCurrentState()
                         }
                     }
                     
                     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                        // Save when track changes
                         saveCurrentState()
                         updateCurrentTrack(mediaItem)
                         _duration.value = controller.duration.coerceAtLeast(0L)
@@ -82,17 +84,14 @@ class AudioPlayer(context: Context, private val onProgressUpdate: (Uri, Long) ->
                     }
                 })
                 
-                // Periodically update position and save state if playing
+                // Periodic position update for UI ONLY
                 scope.launch {
                     while (isActive) {
                         val currentCtrl = mediaController
                         if (currentCtrl != null) {
                             _currentPosition.value = currentCtrl.currentPosition
-                            if (currentCtrl.isPlaying) {
-                                saveCurrentState()
-                            }
                         }
-                        delay(1000) // Every second
+                        delay(100) // 10fps for smooth UI
                     }
                 }
             } catch (e: Exception) {
@@ -118,7 +117,7 @@ class AudioPlayer(context: Context, private val onProgressUpdate: (Uri, Long) ->
             uri = mediaItem.localConfiguration?.uri ?: Uri.EMPTY,
             displayName = metadata.title?.toString() ?: "",
             artist = metadata.artist?.toString() ?: "Unknown",
-            duration = 0,
+            duration = 0, // Duration will be updated from duration flow
             title = metadata.title?.toString() ?: "Unknown"
         )
     }
@@ -174,6 +173,10 @@ class AudioPlayer(context: Context, private val onProgressUpdate: (Uri, Long) ->
 
     fun seekTo(positionMs: Long) {
         mediaController?.seekTo(positionMs)
+    }
+    
+    fun seekTo(itemIndex: Int, positionMs: Long) {
+        mediaController?.seekTo(itemIndex, positionMs)
     }
 
     fun seekForward() {

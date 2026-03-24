@@ -12,6 +12,19 @@ interface MusicDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAudioFiles(audioFiles: List<AudioFileEntity>)
 
+    @Update
+    suspend fun updateAudioFiles(audioFiles: List<AudioFileEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAudioFile(audioFile: AudioFileEntity)
+
+    @Update
+    suspend fun updateAudioFile(audioFile: AudioFileEntity)
+
+    @Transaction
+    @Query("SELECT * FROM playlists")
+    fun getPlaylistsWithAudioFiles(): Flow<List<PlaylistWithAudioFiles>>
+
     @Query("SELECT * FROM playlists")
     fun getAllPlaylists(): Flow<List<PlaylistEntity>>
 

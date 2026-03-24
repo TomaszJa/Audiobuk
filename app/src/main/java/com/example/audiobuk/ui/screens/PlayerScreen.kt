@@ -1,6 +1,7 @@
 package com.example.audiobuk.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -34,15 +36,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -59,8 +57,9 @@ import com.example.audiobuk.viewmodel.MusicViewModel
 fun PlayerScreen(viewModel: MusicViewModel, onBack: () -> Unit) {
     val currentTrack by viewModel.currentTrack.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
-    val currentPosition by viewModel.currentPosition.collectAsState()
-    val duration by viewModel.duration.collectAsState()
+    val globalPosition by viewModel.globalPosition.collectAsState()
+    val totalDuration by viewModel.totalBookDuration.collectAsState()
+    val remainingInChapter by viewModel.remainingInChapter.collectAsState()
     val playbackSpeed by viewModel.playbackSpeed.collectAsState()
     val stopAfterCurrentTrack by viewModel.stopAfterCurrentTrack.collectAsState()
     val sleepTimerRemaining by viewModel.sleepTimerRemaining.collectAsState()
@@ -69,6 +68,16 @@ fun PlayerScreen(viewModel: MusicViewModel, onBack: () -> Unit) {
     var showSpeedDialog by remember { mutableStateOf(false) }
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     var showChaptersDialog by remember { mutableStateOf(false) }
+
+    var sliderPosition by remember { mutableLongStateOf(0L) }
+    var isDragging by remember { mutableStateOf(false) }
+    var isPrecise by remember { mutableStateOf(false) }
+
+    LaunchedEffect(globalPosition) {
+        if (!isDragging) {
+            sliderPosition = globalPosition
+        }
+    }
 
     BackHandler(onBack = onBack)
 
@@ -152,7 +161,6 @@ fun PlayerScreen(viewModel: MusicViewModel, onBack: () -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Playback Speed Button
                 Surface(
                     onClick = { showSpeedDialog = true },
                     shape = MaterialTheme.shapes.medium,
@@ -172,7 +180,6 @@ fun PlayerScreen(viewModel: MusicViewModel, onBack: () -> Unit) {
                     }
                 }
 
-                // Sleep Timer Button
                 Surface(
                     onClick = { showSleepTimerDialog = true },
                     shape = MaterialTheme.shapes.medium,
@@ -200,20 +207,73 @@ fun PlayerScreen(viewModel: MusicViewModel, onBack: () -> Unit) {
                 }
             }
 
-            // Progress Bar
-            Column {
+            // Chapter countdown
+            Text(
+                text = "Chapter ends in: ${formatTime(remainingInChapter)}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            // Progress Bar (Whole Book)
+            Column(
+                modifier = Modifier.pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragStart = { isDragging = true },
+                        onDragEnd = {
+                            isDragging = false
+                            isPrecise = false
+                            viewModel.seekToGlobal(sliderPosition)
+                        },
+                        onDragCancel = {
+                            isDragging = false
+                            isPrecise = false
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            // Move finger up for precise seeking
+                            isPrecise = change.position.y < -100 // Adjust sensitivity threshold
+
+                            val totalWidth = size.width.toFloat()
+                            val sensitivity = if (isPrecise) 0.1f else 1.0f
+                            val deltaPx = dragAmount.x * sensitivity
+                            val deltaMs = (deltaPx / totalWidth) * totalDuration
+                            sliderPosition = (sliderPosition + deltaMs.toLong()).coerceIn(0L, totalDuration)
+                        }
+                    )
+                }
+            ) {
+                if (isPrecise) {
+                    Text(
+                        "Precise Seeking",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
+                } else {
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
+                
                 Slider(
-                    value = currentPosition.toFloat(),
-                    onValueChange = { viewModel.seekTo(it.toLong()) },
-                    valueRange = 0f..duration.toFloat().coerceAtLeast(1f),
+                    value = sliderPosition.toFloat(),
+                    onValueChange = { 
+                        if (!isDragging) { // Only fallback if pointerInput is not active
+                             sliderPosition = it.toLong()
+                        }
+                    },
+                    onValueChangeFinished = {
+                        if (!isDragging) {
+                            viewModel.seekToGlobal(sliderPosition)
+                        }
+                    },
+                    valueRange = 0f..totalDuration.toFloat().coerceAtLeast(1f),
                     modifier = Modifier.fillMaxWidth()
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(formatTime(currentPosition), style = MaterialTheme.typography.labelMedium)
-                    Text(formatTime(duration), style = MaterialTheme.typography.labelMedium)
+                    Text(formatTime(sliderPosition), style = MaterialTheme.typography.labelMedium)
+                    Text(formatTime(totalDuration), style = MaterialTheme.typography.labelMedium)
                 }
             }
 
