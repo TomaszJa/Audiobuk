@@ -5,19 +5,19 @@ import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import com.example.audiobuk.db.*
 import com.example.audiobuk.model.AudioFile
-import com.example.audiobuk.model.Playlist
+import com.example.audiobuk.model.AudioBook
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-class MusicRepository(private val context: Context) {
+class AudioBookRepository(private val context: Context) {
     private val db = AppDatabase.getDatabase(context)
     private val musicDao = db.musicDao()
 
-    fun getPlaylistsFlow(): Flow<List<Playlist>> {
+    fun getPlaylistsFlow(): Flow<List<AudioBook>> {
         return musicDao.getAllPlaylists().map { entities ->
             entities.map { entity ->
                 val audioFileEntities = musicDao.getAudioFilesForPlaylist(entity.uri)
-                Playlist(
+                AudioBook(
                     uri = Uri.parse(entity.uri),
                     name = entity.name,
                     audioFiles = audioFileEntities.map { it.toModel() },

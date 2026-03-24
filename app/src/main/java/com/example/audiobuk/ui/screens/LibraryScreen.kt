@@ -116,7 +116,7 @@ fun LibraryScreen(viewModel: MusicViewModel) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
-                        placeholder = { Text("Search playlists...") },
+                        placeholder = { Text("Search audiobooks...") },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
@@ -148,7 +148,7 @@ fun LibraryScreen(viewModel: MusicViewModel) {
                     }
                 } else if (playlists.isEmpty() && searchQuery.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("No playlists found.")
+                        Text("No audiobooks found.")
                     }
                 } else {
                     val columns = if (configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) 4 else 2
@@ -158,7 +158,7 @@ fun LibraryScreen(viewModel: MusicViewModel) {
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)
                     ) {
                         items(playlists) { playlist ->
-                            PlaylistItem(playlist = playlist) {
+                            PlaylistItem(audioBook = playlist) {
                                 viewModel.playPlaylist(playlist)
                             }
                         }

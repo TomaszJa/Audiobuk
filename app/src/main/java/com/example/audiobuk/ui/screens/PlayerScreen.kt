@@ -64,7 +64,7 @@ fun PlayerScreen(viewModel: MusicViewModel, onBack: () -> Unit) {
     val playbackSpeed by viewModel.playbackSpeed.collectAsState()
     val stopAfterCurrentTrack by viewModel.stopAfterCurrentTrack.collectAsState()
     val sleepTimerRemaining by viewModel.sleepTimerRemaining.collectAsState()
-    val currentPlaylist by viewModel.currentPlaylist.collectAsState()
+    val currentPlaylist by viewModel.currentAudioBook.collectAsState()
     
     var showSpeedDialog by remember { mutableStateOf(false) }
     var showSleepTimerDialog by remember { mutableStateOf(false) }

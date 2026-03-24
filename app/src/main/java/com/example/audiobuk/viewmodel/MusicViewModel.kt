@@ -6,9 +6,9 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.audiobuk.model.AudioFile
-import com.example.audiobuk.model.Playlist
+import com.example.audiobuk.model.AudioBook
 import com.example.audiobuk.player.AudioPlayer
-import com.example.audiobuk.repository.MusicRepository
+import com.example.audiobuk.repository.AudioBookRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,15 +20,15 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class MusicViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = MusicRepository(application)
+    private val repository = AudioBookRepository(application)
     private val prefs = application.getSharedPreferences("audiobuk_prefs", Context.MODE_PRIVATE)
     
-    private val _playlists = MutableStateFlow<List<Playlist>>(emptyList())
+    private val _playlists = MutableStateFlow<List<AudioBook>>(emptyList())
     
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
 
-    val filteredPlaylists: StateFlow<List<Playlist>> = combine(_playlists, _searchQuery) { playlists, query ->
+    val filteredPlaylists: StateFlow<List<AudioBook>> = combine(_playlists, _searchQuery) { playlists, query ->
         if (query.isEmpty()) {
             playlists
         } else {
@@ -45,8 +45,8 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     private val _showPlayerScreen = MutableStateFlow(false)
     val showPlayerScreen: StateFlow<Boolean> = _showPlayerScreen
 
-    private val _currentPlaylist = MutableStateFlow<Playlist?>(null)
-    val currentPlaylist: StateFlow<Playlist?> = _currentPlaylist
+    private val _currentAudioBook = MutableStateFlow<AudioBook?>(null)
+    val currentAudioBook: StateFlow<AudioBook?> = _currentAudioBook
 
     private val player = AudioPlayer(application) { uri, position ->
         viewModelScope.launch {
@@ -86,7 +86,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                 // If we are playing something, try to update the current playlist reference
                 val currentTrackUri = player.currentTrack.value?.uri
                 if (currentTrackUri != null) {
-                    _currentPlaylist.value = it.find { p -> p.audioFiles.any { f -> f.uri == currentTrackUri } }
+                    _currentAudioBook.value = it.find { p -> p.audioFiles.any { f -> f.uri == currentTrackUri } }
                 }
             }
         }
@@ -122,20 +122,20 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun playPlaylist(playlist: Playlist) {
+    fun playPlaylist(audioBook: AudioBook) {
         val currentUri = currentTrack.value?.uri
-        val isAlreadyPlayingThisPlaylist = playlist.audioFiles.any { it.uri == currentUri }
+        val isAlreadyPlayingThisPlaylist = audioBook.audioFiles.any { it.uri == currentUri }
 
         if (!isAlreadyPlayingThisPlaylist) {
             player.playPlaylist(
-                audioFiles = playlist.audioFiles,
-                startUri = playlist.lastPlayedUri,
-                startPositionMs = playlist.lastPositionMs
+                audioFiles = audioBook.audioFiles,
+                startUri = audioBook.lastPlayedUri,
+                startPositionMs = audioBook.lastPositionMs
             )
-            _currentPlaylist.value = playlist
+            _currentAudioBook.value = audioBook
         } else {
             // Even if already playing, update current playlist to the latest one from DB
-            _currentPlaylist.value = playlist
+            _currentAudioBook.value = audioBook
         }
         _showPlayerScreen.value = true
     }

@@ -19,11 +19,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.audiobuk.model.Playlist
+import com.example.audiobuk.model.AudioBook
 
 @Composable
-fun PlaylistItem(playlist: Playlist, onClick: () -> Unit) {
-    val firstTrack = playlist.audioFiles.firstOrNull()
+fun PlaylistItem(audioBook: AudioBook, onClick: () -> Unit) {
+    val firstTrack = audioBook.audioFiles.firstOrNull()
     
     Card(
         modifier = Modifier
@@ -46,7 +46,7 @@ fun PlaylistItem(playlist: Playlist, onClick: () -> Unit) {
             ) {
                 Column(modifier = Modifier.padding(8.dp)) {
                     Text(
-                        text = playlist.name,
+                        text = audioBook.name,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         maxLines = 1,
@@ -54,7 +54,7 @@ fun PlaylistItem(playlist: Playlist, onClick: () -> Unit) {
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
-                        text = "${playlist.audioFiles.size} tracks",
+                        text = "${audioBook.audioFiles.size} tracks",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White.copy(alpha = 0.8f)
                     )
