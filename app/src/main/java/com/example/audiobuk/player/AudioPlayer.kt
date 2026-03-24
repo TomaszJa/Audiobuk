@@ -36,6 +36,9 @@ class AudioPlayer(context: Context, private val onProgressUpdate: (Uri, Long) ->
     private val _playbackSpeed = MutableStateFlow(1.0f)
     val playbackSpeed: StateFlow<Float> = _playbackSpeed
 
+    private val _stopAfterCurrentTrack = MutableStateFlow(false)
+    val stopAfterCurrentTrack: StateFlow<Boolean> = _stopAfterCurrentTrack
+
     init {
         val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
         controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
@@ -61,6 +64,11 @@ class AudioPlayer(context: Context, private val onProgressUpdate: (Uri, Long) ->
                         saveCurrentState()
                         updateCurrentTrack(mediaItem)
                         _duration.value = controller.duration.coerceAtLeast(0L)
+                        
+                        if (_stopAfterCurrentTrack.value && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
+                            controller.pause()
+                            _stopAfterCurrentTrack.value = false
+                        }
                     }
 
                     override fun onPlaybackStateChanged(playbackState: Int) {
@@ -148,6 +156,10 @@ class AudioPlayer(context: Context, private val onProgressUpdate: (Uri, Long) ->
         }
     }
 
+    fun pause() {
+        mediaController?.pause()
+    }
+
     fun seekTo(positionMs: Long) {
         mediaController?.seekTo(positionMs)
     }
@@ -174,6 +186,10 @@ class AudioPlayer(context: Context, private val onProgressUpdate: (Uri, Long) ->
 
     fun setPlaybackSpeed(speed: Float) {
         mediaController?.playbackParameters = PlaybackParameters(speed)
+    }
+
+    fun setStopAfterCurrentTrack(stop: Boolean) {
+        _stopAfterCurrentTrack.value = stop
     }
 
     fun release() {

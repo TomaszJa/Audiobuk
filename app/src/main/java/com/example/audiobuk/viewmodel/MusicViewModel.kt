@@ -8,6 +8,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.audiobuk.model.Playlist
 import com.example.audiobuk.player.AudioPlayer
 import com.example.audiobuk.repository.MusicRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -57,6 +59,11 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     val currentPosition = player.currentPosition
     val duration = player.duration
     val playbackSpeed = player.playbackSpeed
+    val stopAfterCurrentTrack = player.stopAfterCurrentTrack
+
+    private val _sleepTimerRemaining = MutableStateFlow<Long?>(null) // Remaining time in seconds
+    val sleepTimerRemaining: StateFlow<Long?> = _sleepTimerRemaining
+    private var sleepTimerJob: Job? = null
 
     init {
         val savedUri = prefs.getString("root_uri", null)
@@ -150,6 +157,36 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setShowPlayerScreen(show: Boolean) {
         _showPlayerScreen.value = show
+    }
+
+    fun setSleepTimer(minutes: Int?) {
+        sleepTimerJob?.cancel()
+        player.setStopAfterCurrentTrack(false)
+        
+        if (minutes == null) {
+            _sleepTimerRemaining.value = null
+            return
+        }
+
+        if (minutes == -1) { // -1 represents "Chapter end"
+            player.setStopAfterCurrentTrack(true)
+            _sleepTimerRemaining.value = null
+            return
+        }
+
+        val totalSeconds = minutes * 60L
+        _sleepTimerRemaining.value = totalSeconds
+        
+        sleepTimerJob = viewModelScope.launch {
+            var remaining = totalSeconds
+            while (remaining > 0) {
+                delay(1000)
+                remaining--
+                _sleepTimerRemaining.value = remaining
+            }
+            player.pause()
+            _sleepTimerRemaining.value = null
+        }
     }
 
     override fun onCleared() {
