@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.audiobuk.model.AudioFile
 import com.example.audiobuk.model.Playlist
 import com.example.audiobuk.player.AudioPlayer
 import com.example.audiobuk.repository.MusicRepository
@@ -44,6 +45,9 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     private val _showPlayerScreen = MutableStateFlow(false)
     val showPlayerScreen: StateFlow<Boolean> = _showPlayerScreen
 
+    private val _currentPlaylist = MutableStateFlow<Playlist?>(null)
+    val currentPlaylist: StateFlow<Playlist?> = _currentPlaylist
+
     private val player = AudioPlayer(application) { uri, position ->
         viewModelScope.launch {
             _playlists.value.find { playlist -> 
@@ -79,6 +83,11 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.getPlaylistsFlow().collectLatest {
                 _playlists.value = it
+                // If we are playing something, try to update the current playlist reference
+                val currentTrackUri = player.currentTrack.value?.uri
+                if (currentTrackUri != null) {
+                    _currentPlaylist.value = it.find { p -> p.audioFiles.any { f -> f.uri == currentTrackUri } }
+                }
             }
         }
     }
@@ -123,8 +132,16 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                 startUri = playlist.lastPlayedUri,
                 startPositionMs = playlist.lastPositionMs
             )
+            _currentPlaylist.value = playlist
+        } else {
+            // Even if already playing, update current playlist to the latest one from DB
+            _currentPlaylist.value = playlist
         }
         _showPlayerScreen.value = true
+    }
+
+    fun playTrack(track: AudioFile) {
+        player.playTrack(track.uri)
     }
 
     fun togglePlayPause() {

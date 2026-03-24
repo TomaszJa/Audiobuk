@@ -150,6 +150,18 @@ class AudioPlayer(context: Context, private val onProgressUpdate: (Uri, Long) ->
         }
     }
 
+    fun playTrack(uri: Uri) {
+        mediaController?.let { controller ->
+            for (i in 0 until controller.mediaItemCount) {
+                if (controller.getMediaItemAt(i).localConfiguration?.uri == uri) {
+                    controller.seekTo(i, 0)
+                    controller.play()
+                    break
+                }
+            }
+        }
+    }
+
     fun togglePlayPause() {
         mediaController?.let {
             if (it.isPlaying) it.pause() else it.play()
