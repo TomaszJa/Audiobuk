@@ -294,39 +294,43 @@ fun PortraitLayout(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Artwork - Flexible with weight to shrink on shorter 16:9 screens
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
+                .weight(1f)
+                .aspectRatio(1f, matchHeightConstraintsFirst = true)
+                .padding(vertical = 8.dp)
                 .clip(RoundedCornerShape(32.dp)),
             contentAlignment = Alignment.Center
         ) {
             AudioArtwork(
                 uri = currentTrack?.uri,
                 modifier = Modifier.fillMaxSize(),
-                iconSize = 140.dp
+                iconSize = 120.dp
             )
             UndoPrompt(visible = showUndoPrompt, undoTime = undoPosition, onUndo = onUndo)
         }
 
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        // Titles
+        Column(
+            modifier = Modifier.padding(vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Text(
                 text = currentTrack?.artist ?: "Unknown Book",
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = currentTrack?.title ?: "No Chapter Selected",
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -336,9 +340,10 @@ fun PortraitLayout(
 
         Text(
             text = "Chapter ends in: ${formatTime(remainingInChapter)}",
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 8.dp)
         )
 
         ProgressBar(
@@ -353,14 +358,19 @@ fun PortraitLayout(
             onChapterPopupRequest = onChapterPopupRequest
         )
 
+        Spacer(modifier = Modifier.height(8.dp))
+
         PlaybackControls(
             isPlaying = isPlaying,
             onPrevious = onPrevious,
             onNext = onNext,
             onRewind = onRewind,
             onForward = onForward,
-            onTogglePlayPause = onTogglePlayPause
+            onTogglePlayPause = onTogglePlayPause,
+            playSize = 80.dp
         )
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         SettingsRow(
             playbackSpeed = playbackSpeed,
@@ -370,13 +380,15 @@ fun PortraitLayout(
             onShowTimer = onShowTimer
         )
 
+        Spacer(modifier = Modifier.height(8.dp))
+
         TextButton(
             onClick = onShowChapters,
             modifier = Modifier.fillMaxWidth()
         ) {
             Icon(Icons.AutoMirrored.Filled.FormatListBulleted, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Browse chapters", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+            Text("Browse chapters", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
         }
     }
 }
@@ -421,14 +433,15 @@ fun LandscapeLayout(
         Box(
             modifier = Modifier
                 .fillMaxHeight()
-                .aspectRatio(1f)
+                .weight(0.4f) // Constrain artwork width
+                .aspectRatio(1f, matchHeightConstraintsFirst = true)
                 .clip(RoundedCornerShape(32.dp)),
             contentAlignment = Alignment.Center
         ) {
             AudioArtwork(
                 uri = currentTrack?.uri,
                 modifier = Modifier.fillMaxSize(),
-                iconSize = 100.dp
+                iconSize = 80.dp
             )
             UndoPrompt(visible = showUndoPrompt, undoTime = undoPosition, onUndo = onUndo)
         }
@@ -438,13 +451,13 @@ fun LandscapeLayout(
                 .weight(1f)
                 .fillMaxHeight()
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = currentTrack?.artist ?: "Unknown Book",
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
@@ -452,7 +465,7 @@ fun LandscapeLayout(
                 )
                 Text(
                     text = currentTrack?.title ?: "No Chapter",
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -462,7 +475,7 @@ fun LandscapeLayout(
 
             Text(
                 text = "Chapter ends in: ${formatTime(remainingInChapter)}",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
             )
@@ -486,8 +499,8 @@ fun LandscapeLayout(
                 onRewind = onRewind,
                 onForward = onForward,
                 onTogglePlayPause = onTogglePlayPause,
-                iconSize = 40.dp,
-                playSize = 72.dp
+                iconSize = 32.dp,
+                playSize = 64.dp
             )
 
             SettingsRow(
@@ -502,9 +515,9 @@ fun LandscapeLayout(
                 onClick = onShowChapters,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(Icons.AutoMirrored.Filled.FormatListBulleted, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
+                Icon(Icons.AutoMirrored.Filled.FormatListBulleted, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurface)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Browse chapters", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.ExtraBold)
+                Text("Browse chapters", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
             }
         }
     }
@@ -533,13 +546,13 @@ fun UndoPrompt(
                 color = Color.White,
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = 20.sp
+                    fontSize = 18.sp
                 ),
                 textAlign = TextAlign.Center,
                 modifier = Modifier
-                    .padding(24.dp)
+                    .padding(16.dp)
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
-                    .padding(horizontal = 20.dp, vertical = 14.dp)
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
             )
         }
     }
@@ -561,7 +574,7 @@ fun ProgressBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(24.dp),
+                .height(20.dp),
             contentAlignment = Alignment.Center
         ) {
             if (isPrecise) {
@@ -578,7 +591,7 @@ fun ProgressBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
+                .height(48.dp)
         ) {
             Slider(
                 enabled = false,
@@ -591,7 +604,7 @@ fun ProgressBar(
                 thumb = {
                     Box(
                         modifier = Modifier
-                            .size(52.dp)
+                            .size(44.dp)
                             .graphicsLayer(rotationZ = -20f),
                         contentAlignment = Alignment.Center
                     ) {
@@ -606,7 +619,7 @@ fun ProgressBar(
                 track = { sliderState ->
                     SliderDefaults.Track(
                         sliderState = sliderState,
-                        modifier = Modifier.height(8.dp),
+                        modifier = Modifier.height(6.dp),
                         thumbTrackGapSize = 0.dp,
                         colors = SliderDefaults.colors(
                             activeTrackColor = MaterialTheme.colorScheme.primary,
@@ -660,8 +673,8 @@ fun ProgressBar(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(formatTime(sliderPosition), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-            Text(formatTime(totalDuration), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Text(formatTime(sliderPosition), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Text(formatTime(totalDuration), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -695,9 +708,9 @@ fun ChapterSeekDialog(
         },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
-                Text(formatTime(sliderPos), style = MaterialTheme.typography.displayMedium, color = Color.White, fontWeight = FontWeight.ExtraBold)
+                Text(formatTime(sliderPos), style = MaterialTheme.typography.displaySmall, color = Color.White, fontWeight = FontWeight.ExtraBold)
                 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 
                 Surface(
                     onClick = { isPreciseMode = !isPreciseMode },
@@ -705,61 +718,60 @@ fun ChapterSeekDialog(
                     color = if (isPreciseMode) Color.White.copy(alpha = 0.1f) else Color.Transparent,
                     border = if (isPreciseMode) null else androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
                 ) {
-                    Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(if (isPreciseMode) Icons.Default.GpsFixed else Icons.Default.GpsNotFixed, contentDescription = null, tint = Color.White)
+                    Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(if (isPreciseMode) Icons.Default.GpsFixed else Icons.Default.GpsNotFixed, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(if (isPreciseMode) "PRECISE SEEKING ON" else "Standard Seeking", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text(if (isPreciseMode) "PRECISE SEEKING ON" else "Standard Seeking", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Slider(
                     value = sliderPos.toFloat(),
                     onValueChange = { sliderPos = it.toLong() },
                     valueRange = 0f..duration.toFloat().coerceAtLeast(1f),
                     thumb = {
-                        Box(modifier = Modifier.size(48.dp).graphicsLayer(rotationZ = -15f)) {
+                        Box(modifier = Modifier.size(44.dp).graphicsLayer(rotationZ = -15f)) {
                             Image(painter = painterResource(id = R.mipmap.ic_leaf_colorful_foreground), contentDescription = null, modifier = Modifier.fillMaxSize())
                         }
                     },
                     track = { sliderState ->
                         SliderDefaults.Track(
                             sliderState = sliderState,
-                            modifier = Modifier.height(8.dp),
+                            modifier = Modifier.height(6.dp),
                             thumbTrackGapSize = 0.dp,
                             colors = SliderDefaults.colors(
                                 activeTrackColor = MaterialTheme.colorScheme.primary,
                                 inactiveTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
                             )
                         )
-                    },
-                    colors = SliderDefaults.colors(activeTrackColor = MaterialTheme.colorScheme.primary, inactiveTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                    }
                 )
                 
                 if (isPreciseMode) {
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { adjustBy(-1000) }) { Icon(Icons.Default.RemoveCircleOutline, contentDescription = "-1s", tint = Color.White, modifier = Modifier.size(40.dp)) }
-                        Text("-1s", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        IconButton(onClick = { adjustBy(-1000) }) { Icon(Icons.Default.RemoveCircleOutline, contentDescription = "-1s", tint = Color.White, modifier = Modifier.size(32.dp)) }
+                        Text("-1s", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text("+1s", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        IconButton(onClick = { adjustBy(1000) }) { Icon(Icons.Default.AddCircleOutline, contentDescription = "+1s", tint = Color.White, modifier = Modifier.size(40.dp)) }
+                        Text("+1s", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        IconButton(onClick = { adjustBy(1000) }) { Icon(Icons.Default.AddCircleOutline, contentDescription = "+1s", tint = Color.White, modifier = Modifier.size(32.dp)) }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { adjustBy(-10000) }) { Icon(Icons.Default.RemoveCircleOutline, contentDescription = "-10s", tint = Color.White, modifier = Modifier.size(40.dp)) }
-                        Text("-10s", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        IconButton(onClick = { adjustBy(-10000) }) { Icon(Icons.Default.RemoveCircleOutline, contentDescription = "-10s", tint = Color.White, modifier = Modifier.size(32.dp)) }
+                        Text("-10s", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text("+10s", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        IconButton(onClick = { adjustBy(10000) }) { Icon(Icons.Default.AddCircleOutline, contentDescription = "+10s", tint = Color.White, modifier = Modifier.size(40.dp)) }
+                        Text("+10s", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        IconButton(onClick = { adjustBy(10000) }) { Icon(Icons.Default.AddCircleOutline, contentDescription = "+10s", tint = Color.White, modifier = Modifier.size(32.dp)) }
                     }
                 }
             }
         },
         confirmButton = {
-            Button(onClick = { onSeek(sliderPos); onDismiss() }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onSurface, contentColor = MidnightGreen), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(56.dp)) {
-                Text("APPLY POSITION", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+            Button(onClick = { onSeek(sliderPos); onDismiss() }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onSurface, contentColor = MidnightGreen), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(48.dp)) {
+                Text("APPLY POSITION", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
             }
         },
         dismissButton = {
@@ -776,8 +788,8 @@ fun PlaybackControls(
     onRewind: () -> Unit,
     onForward: () -> Unit,
     onTogglePlayPause: () -> Unit,
-    iconSize: androidx.compose.ui.unit.Dp = 48.dp,
-    playSize: androidx.compose.ui.unit.Dp = 84.dp
+    iconSize: androidx.compose.ui.unit.Dp = 44.dp,
+    playSize: androidx.compose.ui.unit.Dp = 80.dp
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -836,13 +848,13 @@ fun SettingsRow(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
             ) {
-                Icon(Icons.Default.Speed, contentDescription = null, modifier = Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
-                Spacer(modifier = Modifier.width(10.dp))
+                Icon(Icons.Default.Speed, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "${"%.1f".format(playbackSpeed)}x",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
@@ -860,22 +872,22 @@ fun SettingsRow(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
             ) {
                 Icon(
                     Icons.Default.Timer, 
                     contentDescription = null, 
-                    modifier = Modifier.size(24.dp), 
+                    modifier = Modifier.size(20.dp), 
                     tint = if (sleepTimerRemaining != null || stopAfterCurrentTrack) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSecondaryContainer
                 )
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = when {
                         stopAfterCurrentTrack -> "Ch. End"
                         sleepTimerRemaining != null -> formatTimerRemaining(sleepTimerRemaining)
                         else -> "Timer"
                     },
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.ExtraBold,
                     color = if (sleepTimerRemaining != null || stopAfterCurrentTrack) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSecondaryContainer
                 )
