@@ -39,6 +39,10 @@ interface MusicDao {
 
     @Query("SELECT * FROM playlists WHERE uri = :uri")
     suspend fun getPlaylistByUri(uri: String): PlaylistEntity?
+    
+    @Transaction
+    @Query("SELECT * FROM playlists ORDER BY lastPlayedTimestamp DESC LIMIT 1")
+    suspend fun getLastPlayedPlaylist(): PlaylistWithAudioFiles?
 
     @Query("DELETE FROM playlists WHERE uri = :uri")
     suspend fun deletePlaylist(uri: String)
