@@ -99,7 +99,18 @@ class PlaybackService : MediaLibraryService() {
                     .add(SessionCommand(COMMAND_SET_SLEEP_TIMER, Bundle.EMPTY))
                     .add(SessionCommand(COMMAND_SET_STOP_CHAPTER, Bundle.EMPTY))
                     .build()
-                return MediaSession.ConnectionResult.accept(availableSessionCommands, connectionResult.availablePlayerCommands)
+                
+                // Pass current state
+                val extras = Bundle().apply {
+                    putLong(EXTRA_SLEEP_TIMER_REMAINING, sleepTimerRemaining)
+                    putBoolean(EXTRA_STOP_CHAPTER, stopAfterChapter)
+                }
+                
+                return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                    .setAvailableSessionCommands(availableSessionCommands)
+                    .setAvailablePlayerCommands(connectionResult.availablePlayerCommands)
+                    .setSessionExtras(extras)
+                    .build()
             }
 
             override fun onCustomCommand(
@@ -128,9 +139,9 @@ class PlaybackService : MediaLibraryService() {
                 controller: MediaSession.ControllerInfo
             ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
                 return serviceScope.future {
-                    val lastBook: AudioBook? = repository.getLastPlayedAudioBook()
+                    val lastBook = repository.getLastPlayedAudioBook()
                     if (lastBook != null) {
-                        val mediaItems = lastBook.audioFiles.map { audioFile: AudioFile ->
+                        val mediaItems = lastBook.audioFiles.map { audioFile ->
                             val metadata = MediaMetadata.Builder()
                                 .setTitle(audioFile.title)
                                 .setArtist(audioFile.artist)

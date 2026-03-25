@@ -2,6 +2,11 @@ package com.example.audiobuk.ui.screens
 
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
@@ -20,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -46,11 +52,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.audiobuk.model.AudioFile
 import com.example.audiobuk.ui.components.AudioArtwork
 import com.example.audiobuk.ui.dialogs.ChaptersDialog
@@ -59,6 +68,7 @@ import com.example.audiobuk.ui.dialogs.SleepTimerDialog
 import com.example.audiobuk.util.formatTime
 import com.example.audiobuk.util.formatTimerRemaining
 import com.example.audiobuk.viewmodel.AudioBookViewModel
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,6 +93,11 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
     var isSliderActive by remember { mutableStateOf(false) }
     var isPrecise by remember { mutableStateOf(false) }
     
+    // Undo logic
+    var originalPositionBeforeSeek by remember { mutableLongStateOf(0L) }
+    var undoPosition by remember { mutableLongStateOf(0L) }
+    var showUndoPrompt by remember { mutableStateOf(false) }
+    
     // Lock sync for a short period after seeking to allow the player to catch up
     var lastSeekTime by remember { mutableLongStateOf(0L) }
     
@@ -97,6 +112,14 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
         val now = System.currentTimeMillis()
         if (!isCurrentlyDragging && now - lastSeekTime > 1000) {
             sliderPosition = globalPosition
+        }
+    }
+
+    // Auto-hide undo prompt after 5 seconds
+    LaunchedEffect(showUndoPrompt) {
+        if (showUndoPrompt) {
+            delay(5000)
+            showUndoPrompt = false
         }
     }
 
@@ -145,11 +168,24 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
         }
     ) { padding ->
         val onSeekFinished: () -> Unit = {
-            viewModel.seekToGlobal(sliderPosition)
+            val finalPos = sliderPosition
+            // Only show undo if we moved more than 5 seconds
+            if (Math.abs(finalPos - originalPositionBeforeSeek) > 5000) {
+                undoPosition = originalPositionBeforeSeek
+                showUndoPrompt = true
+            }
+            viewModel.seekToGlobal(finalPos)
             lastSeekTime = System.currentTimeMillis()
             isSliderActive = false
             isDraggingGesture = false
             isPrecise = false
+        }
+
+        val onUndo = {
+            viewModel.seekToGlobal(undoPosition)
+            sliderPosition = undoPosition
+            lastSeekTime = System.currentTimeMillis()
+            showUndoPrompt = false
         }
 
         if (isLandscape) {
@@ -164,6 +200,9 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
                 stopAfterCurrentTrack = stopAfterCurrentTrack,
                 sleepTimerRemaining = sleepTimerRemaining,
                 isPrecise = isPrecise,
+                showUndoPrompt = showUndoPrompt,
+                undoPosition = undoPosition,
+                onUndo = onUndo,
                 sliderInteractionSource = sliderInteractionSource,
                 onTogglePlayPause = { viewModel.togglePlayPause() },
                 onPrevious = { viewModel.previous() },
@@ -175,7 +214,11 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
                 onShowChapters = { showChaptersDialog = true },
                 onSliderValueChange = { sliderPosition = it; isSliderActive = true },
                 onSliderValueChangeFinished = onSeekFinished,
-                onGestureStart = { isDraggingGesture = true; isPrecise = false },
+                onGestureStart = { 
+                    originalPositionBeforeSeek = sliderPosition
+                    isDraggingGesture = true
+                    isPrecise = false 
+                },
                 onGestureEnd = onSeekFinished,
                 onGestureDelta = { deltaMs, precise -> 
                     sliderPosition = (sliderPosition + deltaMs).coerceIn(0L, totalDuration)
@@ -194,6 +237,9 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
                 stopAfterCurrentTrack = stopAfterCurrentTrack,
                 sleepTimerRemaining = sleepTimerRemaining,
                 isPrecise = isPrecise,
+                showUndoPrompt = showUndoPrompt,
+                undoPosition = undoPosition,
+                onUndo = onUndo,
                 sliderInteractionSource = sliderInteractionSource,
                 onTogglePlayPause = { viewModel.togglePlayPause() },
                 onPrevious = { viewModel.previous() },
@@ -205,7 +251,11 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
                 onShowChapters = { showChaptersDialog = true },
                 onSliderValueChange = { sliderPosition = it; isSliderActive = true },
                 onSliderValueChangeFinished = onSeekFinished,
-                onGestureStart = { isDraggingGesture = true; isPrecise = false },
+                onGestureStart = { 
+                    originalPositionBeforeSeek = sliderPosition
+                    isDraggingGesture = true
+                    isPrecise = false 
+                },
                 onGestureEnd = onSeekFinished,
                 onGestureDelta = { deltaMs, precise -> 
                     sliderPosition = (sliderPosition + deltaMs).coerceIn(0L, totalDuration)
@@ -228,6 +278,9 @@ fun PortraitLayout(
     stopAfterCurrentTrack: Boolean,
     sleepTimerRemaining: Long?,
     isPrecise: Boolean,
+    showUndoPrompt: Boolean,
+    undoPosition: Long,
+    onUndo: () -> Unit,
     sliderInteractionSource: MutableInteractionSource,
     onTogglePlayPause: () -> Unit,
     onPrevious: () -> Unit,
@@ -250,15 +303,26 @@ fun PortraitLayout(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // Large Artwork
-        AudioArtwork(
-            uri = currentTrack?.uri,
+        // Large Artwork with Undo Prompt Overlay
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
                 .clip(MaterialTheme.shapes.extraLarge),
-            iconSize = 120.dp
-        )
+            contentAlignment = Alignment.Center
+        ) {
+            AudioArtwork(
+                uri = currentTrack?.uri,
+                modifier = Modifier.fillMaxSize(),
+                iconSize = 120.dp
+            )
+            
+            UndoPrompt(
+                visible = showUndoPrompt,
+                undoTime = undoPosition,
+                onUndo = onUndo
+            )
+        }
 
         // Track Info
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -341,6 +405,9 @@ fun LandscapeLayout(
     stopAfterCurrentTrack: Boolean,
     sleepTimerRemaining: Long?,
     isPrecise: Boolean,
+    showUndoPrompt: Boolean,
+    undoPosition: Long,
+    onUndo: () -> Unit,
     sliderInteractionSource: MutableInteractionSource,
     onTogglePlayPause: () -> Unit,
     onPrevious: () -> Unit,
@@ -363,15 +430,26 @@ fun LandscapeLayout(
         horizontalArrangement = Arrangement.spacedBy(24.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Artwork on the left
-        AudioArtwork(
-            uri = currentTrack?.uri,
+        // Artwork on the left with Undo Prompt Overlay
+        Box(
             modifier = Modifier
                 .fillMaxHeight()
                 .aspectRatio(1f)
                 .clip(MaterialTheme.shapes.extraLarge),
-            iconSize = 80.dp
-        )
+            contentAlignment = Alignment.Center
+        ) {
+            AudioArtwork(
+                uri = currentTrack?.uri,
+                modifier = Modifier.fillMaxSize(),
+                iconSize = 80.dp
+            )
+
+            UndoPrompt(
+                visible = showUndoPrompt,
+                undoTime = undoPosition,
+                onUndo = onUndo
+            )
+        }
 
         // All controls on the right in a scrollable column
         Column(
@@ -430,8 +508,8 @@ fun LandscapeLayout(
                 onRewind = onRewind,
                 onForward = onForward,
                 onTogglePlayPause = onTogglePlayPause,
-                iconSize = 32.dp,
-                playSize = 56.dp
+                iconSize = 40.dp,
+                playSize = 64.dp
             )
 
             // Settings Row
@@ -457,6 +535,42 @@ fun LandscapeLayout(
 }
 
 @Composable
+fun UndoPrompt(
+    visible: Boolean,
+    undoTime: Long,
+    onUndo: () -> Unit
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(),
+        exit = fadeOut()
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.4f))
+                .clickable(onClick = onUndo),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Go back to: ${formatTime(undoTime)}?",
+                color = Color.White,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    lineHeight = 24.sp
+                ),
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .padding(24.dp)
+                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            )
+        }
+    }
+}
+
+@Composable
 fun ProgressBar(
     sliderPosition: Long,
     totalDuration: Long,
@@ -468,45 +582,69 @@ fun ProgressBar(
     onGestureEnd: () -> Unit,
     onGestureDelta: (Long, Boolean) -> Unit
 ) {
-    Column(
-        modifier = Modifier.pointerInput(totalDuration) {
-            detectDragGestures(
-                onDragStart = { onGestureStart() },
-                onDragEnd = { onGestureEnd() },
-                onDragCancel = { onGestureEnd() },
-                onDrag = { change, dragAmount ->
-                    change.consume()
-                    val precise = change.position.y < -100 
-                    val totalWidth = size.width.toFloat()
-                    val sensitivity = if (precise) 0.1f else 1.0f
-                    val deltaPx = dragAmount.x * sensitivity
-                    val deltaMs = (deltaPx / totalWidth) * totalDuration
-                    onGestureDelta(deltaMs.toLong(), precise)
-                }
-            )
-        }
-    ) {
-        if (isPrecise) {
-            Text(
-                "Precise Seeking",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
-        } else {
-            Spacer(modifier = Modifier.height(14.dp))
+    Column {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isPrecise) {
+                Text(
+                    "Precise Seeking",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
         
-        Slider(
-            value = sliderPosition.toFloat(),
-            onValueChange = { onSliderValueChange(it.toLong()) },
-            onValueChangeFinished = onSliderValueChangeFinished,
-            valueRange = 0f..totalDuration.toFloat().coerceAtLeast(1f),
-            interactionSource = sliderInteractionSource,
-            modifier = Modifier.fillMaxWidth()
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+        ) {
+            Slider(
+                value = sliderPosition.toFloat(),
+                onValueChange = { }, // Controlled by overlay
+                onValueChangeFinished = { },
+                valueRange = 0f..totalDuration.toFloat().coerceAtLeast(1f),
+                interactionSource = sliderInteractionSource,
+                modifier = Modifier.align(Alignment.Center)
+            )
+            
+            // Gesture Overlay - Siblings placed after are on top in a Box
+            Spacer(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(totalDuration) {
+                        detectDragGestures(
+                            onDragStart = { offset ->
+                                onGestureStart()
+                                // Snap to the touched position immediately
+                                val ratio = (offset.x / size.width).coerceIn(0f, 1f)
+                                onSliderValueChange((ratio * totalDuration).toLong())
+                            },
+                            onDragEnd = { onGestureEnd() },
+                            onDragCancel = { onGestureEnd() },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                // Precise seeking activates whenever the finger is above the progress bar container
+                                // change.position.y is relative to this 48.dp box (0 at top, 48 at bottom)
+                                val precise = change.position.y < 0
+                                
+                                val totalWidth = size.width.toFloat()
+                                val sensitivity = if (precise) 0.1f else 1.0f
+                                val deltaPx = dragAmount.x * sensitivity
+                                val deltaMs = (deltaPx / totalWidth) * totalDuration
+                                onGestureDelta(deltaMs.toLong(), precise)
+                            }
+                        )
+                    }
+            )
+        }
+
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(formatTime(sliderPosition), style = MaterialTheme.typography.labelMedium)
@@ -523,8 +661,8 @@ fun PlaybackControls(
     onRewind: () -> Unit,
     onForward: () -> Unit,
     onTogglePlayPause: () -> Unit,
-    iconSize: androidx.compose.ui.unit.Dp = 36.dp,
-    playSize: androidx.compose.ui.unit.Dp = 72.dp
+    iconSize: androidx.compose.ui.unit.Dp = 44.dp,
+    playSize: androidx.compose.ui.unit.Dp = 84.dp
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -569,7 +707,8 @@ fun SettingsRow(
     onShowTimer: () -> Unit
 ) {
     Row(
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(

@@ -61,8 +61,7 @@ class AudioPlayer(context: Context, private val onProgressUpdate: (Uri, Long) ->
 
                 controller.addListener(object : Player.Listener {
                     override fun onEvents(player: Player, events: Player.Events) {
-                        // In Media3 1.5.1, EVENT_SESSION_EXTRAS_CHANGED is not available.
-                        // We refresh extras on any event to ensure sync.
+                        // Refresh extras on any event as a backup
                         val extras = controller.sessionExtras
                         _sleepTimerRemaining.value = extras.getLong(PlaybackService.EXTRA_SLEEP_TIMER_REMAINING, 0L).takeIf { it > 0 }
                         _stopAfterCurrentTrack.value = extras.getBoolean(PlaybackService.EXTRA_STOP_CHAPTER, false)
@@ -92,8 +91,17 @@ class AudioPlayer(context: Context, private val onProgressUpdate: (Uri, Long) ->
                 
                 scope.launch {
                     while (isActive) {
-                        mediaController?.let { _currentPosition.value = it.currentPosition }
-                        delay(100)
+                        mediaController?.let { ctrl ->
+                            _currentPosition.value = ctrl.currentPosition
+                            
+                            // Proactively sync session extras in the loop because Media3 1.5.1 
+                            // doesn't fire events for extras updates alone.
+                            val extras = ctrl.sessionExtras
+                            val remaining = extras.getLong(PlaybackService.EXTRA_SLEEP_TIMER_REMAINING, 0L)
+                            _sleepTimerRemaining.value = if (remaining > 0) remaining else null
+                            _stopAfterCurrentTrack.value = extras.getBoolean(PlaybackService.EXTRA_STOP_CHAPTER, false)
+                        }
+                        delay(500)
                     }
                 }
             } catch (e: Exception) {
