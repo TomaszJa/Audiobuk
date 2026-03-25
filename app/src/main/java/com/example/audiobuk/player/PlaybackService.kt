@@ -18,8 +18,6 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.example.audiobuk.MainActivity
-import com.example.audiobuk.model.AudioBook
-import com.example.audiobuk.model.AudioFile
 import com.example.audiobuk.repository.AudioBookRepository
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -194,7 +192,7 @@ class PlaybackService : MediaLibraryService() {
             putLong(EXTRA_SLEEP_TIMER_REMAINING, sleepTimerRemaining)
             putBoolean(EXTRA_STOP_CHAPTER, stopAfterChapter)
         }
-        mediaLibrarySession?.setSessionExtras(extras)
+        mediaLibrarySession?.sessionExtras = extras
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {

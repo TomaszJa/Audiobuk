@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import androidx.core.net.toUri
 
 class AudioBookRepository(private val context: Context) {
     private val db = AppDatabase.getDatabase(context)
@@ -21,10 +22,10 @@ class AudioBookRepository(private val context: Context) {
             entities.map { playlistWithFiles ->
                 val entity = playlistWithFiles.playlist
                 AudioBook(
-                    uri = Uri.parse(entity.uri),
+                    uri = entity.uri.toUri(),
                     name = entity.name,
                     audioFiles = playlistWithFiles.audioFiles.map { it.toModel() },
-                    lastPlayedUri = entity.lastPlayedAudioUri?.let { Uri.parse(it) },
+                    lastPlayedUri = entity.lastPlayedAudioUri?.toUri(),
                     lastPositionMs = entity.lastPositionMs
                 )
             }
@@ -124,10 +125,10 @@ class AudioBookRepository(private val context: Context) {
         musicDao.getLastPlayedPlaylist()?.let { playlistWithFiles ->
             val entity = playlistWithFiles.playlist
             AudioBook(
-                uri = Uri.parse(entity.uri),
+                uri = entity.uri.toUri(),
                 name = entity.name,
                 audioFiles = playlistWithFiles.audioFiles.map { it.toModel() },
-                lastPlayedUri = entity.lastPlayedAudioUri?.let { Uri.parse(it) },
+                lastPlayedUri = entity.lastPlayedAudioUri?.toUri(),
                 lastPositionMs = entity.lastPositionMs
             )
         }
@@ -141,7 +142,7 @@ class AudioBookRepository(private val context: Context) {
 
     private fun AudioFileEntity.toModel() = AudioFile(
         id = uri.hashCode().toLong(),
-        uri = Uri.parse(uri),
+        uri = uri.toUri(),
         displayName = displayName,
         artist = artist,
         duration = duration,

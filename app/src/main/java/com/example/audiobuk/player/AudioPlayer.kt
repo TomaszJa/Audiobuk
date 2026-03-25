@@ -146,7 +146,7 @@ class AudioPlayer(context: Context, private val onProgressUpdate: (Uri, Long) ->
     private fun mediaIdToLong(mediaId: String): Long {
         return try {
             mediaId.toLong()
-        } catch (e: NumberFormatException) {
+        } catch (_: NumberFormatException) {
             -1L
         }
     }
@@ -190,7 +190,6 @@ class AudioPlayer(context: Context, private val onProgressUpdate: (Uri, Long) ->
         mediaController?.let { if (it.isPlaying) it.pause() else it.play() }
     }
 
-    fun pause() { mediaController?.pause() }
     fun seekTo(positionMs: Long) { mediaController?.seekTo(positionMs) }
     fun seekTo(itemIndex: Int, positionMs: Long) { mediaController?.seekTo(itemIndex, positionMs) }
     fun seekForward() { mediaController?.let { it.seekTo(it.currentPosition + 10000) } }

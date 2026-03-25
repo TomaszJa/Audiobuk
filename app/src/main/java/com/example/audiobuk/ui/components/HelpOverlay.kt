@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.sp
 import com.example.audiobuk.ui.theme.MidnightGreen
 
 enum class HelpTarget {
-    NONE, PRECISION_SEEK, CHAPTER_ZOOM, SPEED, TIMER, BROWSE, CONTROLS
+    PRECISION_SEEK, CHAPTER_ZOOM, SPEED, TIMER, BROWSE, CONTROLS
 }
 
 data class HelpStep(

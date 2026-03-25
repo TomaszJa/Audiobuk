@@ -45,10 +45,10 @@ fun AudioArtwork(
             try {
                 retriever.setDataSource(context, uri)
                 artwork = retriever.embeddedPicture
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 artwork = null
             } finally {
-                try { retriever.release() } catch (e: Exception) {}
+                try { retriever.release() } catch (_: Exception) {}
             }
         }
     }
