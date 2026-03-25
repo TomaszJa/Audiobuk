@@ -42,7 +42,7 @@ fun ProgressBar(
         ) {
             if (isPrecise) {
                 Text(
-                    "PRECISE SEEKING (BOOK)",
+                    "PRECISE SEEKING (10x)",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.ExtraBold,
@@ -54,7 +54,7 @@ fun ProgressBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
+                .height(64.dp) // Increased hit area height from 48dp to 64dp
         ) {
             Slider(
                 enabled = false,
@@ -82,7 +82,7 @@ fun ProgressBar(
                 track = { sliderState ->
                     SliderDefaults.Track(
                         sliderState = sliderState,
-                        modifier = Modifier.height(6.dp),
+                        modifier = Modifier.height(8.dp), // Slightly thicker track for better visibility
                         thumbTrackGapSize = 0.dp,
                         colors = SliderDefaults.colors(
                             activeTrackColor = MaterialTheme.colorScheme.primary,
@@ -92,6 +92,7 @@ fun ProgressBar(
                 }
             )
             
+            // Gesture overlay
             Spacer(
                 modifier = Modifier
                     .fillMaxSize()
@@ -116,16 +117,14 @@ fun ProgressBar(
                             onDrag = { change, dragAmount ->
                                 change.consume()
                                 
-                                // Stability Zone: Horizontal movement is ignored in the bottom half 
-                                // to ensure the long-press remains stable and accidental jumps are prevented.
-                                val isStabilityZone = change.position.y > size.height * 0.5f
+                                // Drag Up = Precise Mode (10x slower)
+                                // Drag Down or on the bar = Normal Mode
+                                // We no longer have a "Stability Zone" that blocks input.
+                                val isPreciseMode = change.position.y < 0
+                                val sensitivity = if (isPreciseMode) 0.1f else 1.0f
                                 
-                                if (!isStabilityZone) {
-                                    val precise = change.position.y < 0
-                                    val sensitivity = if (precise) 0.1f else 1.0f
-                                    val deltaMs = ((dragAmount.x * sensitivity) / size.width.toFloat()) * totalDuration
-                                    onGestureDelta(deltaMs.toLong(), precise)
-                                }
+                                val deltaMs = ((dragAmount.x * sensitivity) / size.width.toFloat()) * totalDuration
+                                onGestureDelta(deltaMs.toLong(), isPreciseMode)
                             }
                         )
                     }
