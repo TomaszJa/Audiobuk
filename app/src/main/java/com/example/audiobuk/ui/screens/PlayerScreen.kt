@@ -52,11 +52,11 @@ import com.example.audiobuk.ui.dialogs.PlaybackSpeedDialog
 import com.example.audiobuk.ui.dialogs.SleepTimerDialog
 import com.example.audiobuk.util.formatTime
 import com.example.audiobuk.util.formatTimerRemaining
-import com.example.audiobuk.viewmodel.MusicViewModel
+import com.example.audiobuk.viewmodel.AudioBookViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlayerScreen(viewModel: MusicViewModel, onBack: () -> Unit) {
+fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
     val currentTrack by viewModel.currentTrack.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
     val globalPosition by viewModel.globalPosition.collectAsState()

@@ -42,11 +42,11 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.example.audiobuk.ui.components.PlaybackControlBar
 import com.example.audiobuk.ui.components.PlaylistItem
-import com.example.audiobuk.viewmodel.MusicViewModel
+import com.example.audiobuk.viewmodel.AudioBookViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LibraryScreen(viewModel: MusicViewModel) {
+fun LibraryScreen(viewModel: AudioBookViewModel) {
     val context = LocalContext.current
     val playlists by viewModel.filteredPlaylists.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()

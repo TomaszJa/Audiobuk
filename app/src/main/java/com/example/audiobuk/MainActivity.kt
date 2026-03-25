@@ -13,7 +13,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.audiobuk.ui.screens.LibraryScreen
 import com.example.audiobuk.ui.screens.PlayerScreen
 import com.example.audiobuk.ui.theme.AudiobukTheme
-import com.example.audiobuk.viewmodel.MusicViewModel
+import com.example.audiobuk.viewmodel.AudioBookViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class MainActivity : ComponentActivity() {
@@ -27,7 +27,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AudiobukTheme {
-                val viewModel: MusicViewModel = viewModel()
+                val viewModel: AudioBookViewModel = viewModel()
                 val currentIntent by intentFlow.collectAsState()
                 
                 LaunchedEffect(currentIntent) {
@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
         intentFlow.value = intent
     }
 
-    private fun handleIntent(intent: Intent, viewModel: MusicViewModel) {
+    private fun handleIntent(intent: Intent, viewModel: AudioBookViewModel) {
         if (intent.action == "com.example.audiobuk.OPEN_PLAYER") {
             viewModel.setShowPlayerScreen(true)
         }
@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainApp(viewModel: MusicViewModel) {
+fun MainApp(viewModel: AudioBookViewModel) {
     val showPlayerScreen by viewModel.showPlayerScreen.collectAsState()
 
     if (showPlayerScreen) {

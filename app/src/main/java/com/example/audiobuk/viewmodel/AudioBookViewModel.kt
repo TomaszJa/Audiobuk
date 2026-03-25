@@ -14,7 +14,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
-class MusicViewModel(application: Application) : AndroidViewModel(application) {
+class AudioBookViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AudioBookRepository(application)
     private val prefs = application.getSharedPreferences("audiobuk_prefs", Context.MODE_PRIVATE)
     
