@@ -1,3 +1,4 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
 package com.example.audiobuk.ui.screens
 
 import android.content.res.Configuration
@@ -36,25 +37,30 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import com.example.audiobuk.R
 import com.example.audiobuk.model.AudioFile
 import com.example.audiobuk.ui.components.AudioArtwork
 import com.example.audiobuk.ui.dialogs.ChaptersDialog
 import com.example.audiobuk.ui.dialogs.PlaybackSpeedDialog
 import com.example.audiobuk.ui.dialogs.SleepTimerDialog
+import com.example.audiobuk.ui.theme.*
 import com.example.audiobuk.util.formatTime
 import com.example.audiobuk.util.formatTimerRemaining
 import com.example.audiobuk.viewmodel.AudioBookViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
     val currentTrack by viewModel.currentTrack.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
     val globalPosition by viewModel.globalPosition.collectAsState()
     val totalDuration by viewModel.totalBookDuration.collectAsState()
+    val currentPosition by viewModel.currentPosition.collectAsState()
+    val chapterDuration by viewModel.duration.collectAsState()
     val remainingInChapter by viewModel.remainingInChapter.collectAsState()
     val playbackSpeed by viewModel.playbackSpeed.collectAsState()
     val stopAfterCurrentTrack by viewModel.stopAfterCurrentTrack.collectAsState()
@@ -64,6 +70,7 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
     var showSpeedDialog by remember { mutableStateOf(false) }
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     var showChaptersDialog by remember { mutableStateOf(false) }
+    var showChapterSeekDialog by remember { mutableStateOf(false) }
 
     var sliderPosition by remember { mutableLongStateOf(0L) }
     var isDraggingGesture by remember { mutableStateOf(false) }
@@ -122,6 +129,16 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
                 showChaptersDialog = false
             },
             onDismiss = { showChaptersDialog = false }
+        )
+    }
+
+    if (showChapterSeekDialog) {
+        ChapterSeekDialog(
+            currentTrack = currentTrack,
+            currentPosition = currentPosition,
+            duration = chapterDuration,
+            onSeek = { viewModel.seekTo(it) },
+            onDismiss = { showChapterSeekDialog = false }
         )
     }
 
@@ -194,7 +211,8 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
                 onGestureDelta = { deltaMs, precise -> 
                     sliderPosition = (sliderPosition + deltaMs).coerceIn(0L, totalDuration)
                     isPrecise = precise
-                }
+                },
+                onChapterPopupRequest = { showChapterSeekDialog = true }
             )
         } else {
             PortraitLayout(
@@ -235,7 +253,8 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
                 onGestureDelta = { deltaMs, precise -> 
                     sliderPosition = (sliderPosition + deltaMs).coerceIn(0L, totalDuration)
                     isPrecise = precise
-                }
+                },
+                onChapterPopupRequest = { showChapterSeekDialog = true }
             )
         }
     }
@@ -268,7 +287,8 @@ fun PortraitLayout(
     onSliderValueChange: (Long) -> Unit,
     onGestureStart: () -> Unit,
     onGestureEnd: () -> Unit,
-    onGestureDelta: (Long, Boolean) -> Unit
+    onGestureDelta: (Long, Boolean) -> Unit,
+    onChapterPopupRequest: () -> Unit
 ) {
     Column(
         modifier = modifier
@@ -328,7 +348,8 @@ fun PortraitLayout(
             onSliderValueChange = onSliderValueChange,
             onGestureStart = onGestureStart,
             onGestureEnd = onGestureEnd,
-            onGestureDelta = onGestureDelta
+            onGestureDelta = onGestureDelta,
+            onChapterPopupRequest = onChapterPopupRequest
         )
 
         PlaybackControls(
@@ -386,7 +407,8 @@ fun LandscapeLayout(
     onSliderValueChange: (Long) -> Unit,
     onGestureStart: () -> Unit,
     onGestureEnd: () -> Unit,
-    onGestureDelta: (Long, Boolean) -> Unit
+    onGestureDelta: (Long, Boolean) -> Unit,
+    onChapterPopupRequest: () -> Unit
 ) {
     Row(
         modifier = modifier
@@ -451,7 +473,8 @@ fun LandscapeLayout(
                 onSliderValueChange = onSliderValueChange,
                 onGestureStart = onGestureStart,
                 onGestureEnd = onGestureEnd,
-                onGestureDelta = onGestureDelta
+                onGestureDelta = onGestureDelta,
+                onChapterPopupRequest = onChapterPopupRequest
             )
 
             PlaybackControls(
@@ -520,7 +543,6 @@ fun UndoPrompt(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProgressBar(
     sliderPosition: Long,
@@ -530,8 +552,12 @@ fun ProgressBar(
     onSliderValueChange: (Long) -> Unit,
     onGestureStart: () -> Unit,
     onGestureEnd: () -> Unit,
-    onGestureDelta: (Long, Boolean) -> Unit
+    onGestureDelta: (Long, Boolean) -> Unit,
+    onChapterPopupRequest: () -> Unit
 ) {
+    val scope = rememberCoroutineScope()
+    var holdJob by remember { mutableStateOf<Job?>(null) }
+
     Column {
         Box(
             modifier = Modifier
@@ -541,7 +567,7 @@ fun ProgressBar(
         ) {
             if (isPrecise) {
                 Text(
-                    "PRECISE SEEKING",
+                    "PRECISE SEEKING (BOOK)",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.ExtraBold,
@@ -599,11 +625,37 @@ fun ProgressBar(
                                 onGestureStart()
                                 val ratio = (offset.x / size.width).coerceIn(0f, 1f)
                                 onSliderValueChange((ratio * totalDuration).toLong())
+                                holdJob?.cancel()
+                                holdJob = null
                             },
-                            onDragEnd = { onGestureEnd() },
-                            onDragCancel = { onGestureEnd() },
+                            onDragEnd = { 
+                                onGestureEnd()
+                                holdJob?.cancel()
+                                holdJob = null
+                            },
+                            onDragCancel = { 
+                                onGestureEnd()
+                                holdJob?.cancel()
+                                holdJob = null
+                            },
                             onDrag = { change, dragAmount ->
                                 change.consume()
+                                
+                                // Detect slide down + hold for chapter popup
+                                val isSlidingDown = change.position.y > size.height + 15f
+                                if (isSlidingDown) {
+                                    if (holdJob == null) {
+                                        holdJob = scope.launch {
+                                            delay(2000)
+                                            onChapterPopupRequest()
+                                            holdJob = null
+                                        }
+                                    }
+                                } else {
+                                    holdJob?.cancel()
+                                    holdJob = null
+                                }
+
                                 val precise = change.position.y < 0
                                 val sensitivity = if (precise) 0.1f else 1.0f
                                 val deltaMs = ((dragAmount.x * sensitivity) / size.width.toFloat()) * totalDuration
@@ -622,6 +674,108 @@ fun ProgressBar(
             Text(formatTime(totalDuration), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+}
+
+@Composable
+fun ChapterSeekDialog(
+    currentTrack: AudioFile?,
+    currentPosition: Long,
+    duration: Long,
+    onSeek: (Long) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var sliderPos by remember { mutableLongStateOf(currentPosition) }
+    var isPreciseMode by remember { mutableStateOf(false) }
+    
+    val adjustBy: (Long) -> Unit = { ms ->
+        sliderPos = (sliderPos + ms).coerceIn(0L, duration)
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier.fillMaxWidth(0.92f),
+        containerColor = DeepBark,
+        shape = RoundedCornerShape(32.dp),
+        title = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                Text("Chapter Zoom", style = MaterialTheme.typography.headlineMedium, color = Color.White, fontWeight = FontWeight.ExtraBold)
+                Text(currentTrack?.title ?: "Current Chapter", style = MaterialTheme.typography.titleMedium, color = NeonLeaf, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
+                Text(formatTime(sliderPos), style = MaterialTheme.typography.displayMedium, color = NeonLeaf, fontWeight = FontWeight.ExtraBold)
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Surface(
+                    onClick = { isPreciseMode = !isPreciseMode },
+                    shape = RoundedCornerShape(16.dp),
+                    color = if (isPreciseMode) NeonLeaf.copy(alpha = 0.2f) else Color.Transparent,
+                    border = if (isPreciseMode) null else androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
+                ) {
+                    Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(if (isPreciseMode) Icons.Default.GpsFixed else Icons.Default.GpsNotFixed, contentDescription = null, tint = if (isPreciseMode) NeonLeaf else Color.White)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(if (isPreciseMode) "PRECISE SEEKING ON" else "Standard Seeking", color = if (isPreciseMode) NeonLeaf else Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                Slider(
+                    value = sliderPos.toFloat(),
+                    onValueChange = { sliderPos = it.toLong() },
+                    valueRange = 0f..duration.toFloat().coerceAtLeast(1f),
+                    thumb = {
+                        Box(modifier = Modifier.size(48.dp).graphicsLayer(rotationZ = -15f)) {
+                            Image(painter = painterResource(id = R.mipmap.ic_leaf_colorful_foreground), contentDescription = null, modifier = Modifier.fillMaxSize())
+                        }
+                    },
+                    track = { sliderState ->
+                        SliderDefaults.Track(
+                            sliderState = sliderState,
+                            modifier = Modifier.height(8.dp),
+                            thumbTrackGapSize = 0.dp,
+                            colors = SliderDefaults.colors(
+                                activeTrackColor = NeonLeaf,
+                                inactiveTrackColor = NeonLeaf.copy(alpha = 0.2f)
+                            )
+                        )
+                    },
+                    colors = SliderDefaults.colors(activeTrackColor = NeonLeaf, inactiveTrackColor = NeonLeaf.copy(alpha = 0.2f))
+                )
+                
+                if (isPreciseMode) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { adjustBy(-1000) }) { Icon(Icons.Default.RemoveCircleOutline, contentDescription = "-1s", tint = Color.White, modifier = Modifier.size(40.dp)) }
+                        Text("-1s", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text("+1s", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        IconButton(onClick = { adjustBy(1000) }) { Icon(Icons.Default.AddCircleOutline, contentDescription = "+1s", tint = Color.White, modifier = Modifier.size(40.dp)) }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { adjustBy(-10000) }) { Icon(Icons.Default.RemoveCircleOutline, contentDescription = "-10s", tint = Color.White, modifier = Modifier.size(40.dp)) }
+                        Text("-10s", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text("+10s", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        IconButton(onClick = { adjustBy(10000) }) { Icon(Icons.Default.AddCircleOutline, contentDescription = "+10s", tint = Color.White, modifier = Modifier.size(40.dp)) }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onSeek(sliderPos); onDismiss() }, colors = ButtonDefaults.buttonColors(containerColor = NeonLeaf, contentColor = DeepBark), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(56.dp)) {
+                Text("APPLY POSITION", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("CANCEL", color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.Bold) }
+        }
+    )
 }
 
 @Composable
