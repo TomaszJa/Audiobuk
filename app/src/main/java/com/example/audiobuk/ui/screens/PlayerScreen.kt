@@ -3,9 +3,9 @@ package com.example.audiobuk.ui.screens
 
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,10 +27,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -49,10 +56,17 @@ import com.example.audiobuk.ui.theme.*
 import com.example.audiobuk.util.formatTime
 import com.example.audiobuk.util.formatTimerRemaining
 import com.example.audiobuk.viewmodel.AudioBookViewModel
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlin.math.abs
+
+enum class HelpTarget {
+    NONE, PRECISION_SEEK, CHAPTER_ZOOM, SPEED, TIMER, BROWSE, CONTROLS
+}
+
+data class HelpStep(
+    val target: HelpTarget,
+    val text: String
+)
 
 @Composable
 fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
@@ -86,6 +100,18 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
     val sliderInteractionSource = remember { MutableInteractionSource() }
     val isSliderDragged by sliderInteractionSource.collectIsDraggedAsState()
     val isCurrentlyDragging = isDraggingGesture || isSliderDragged || isSliderActive
+
+    // Help State
+    var currentHelpStepIndex by remember { mutableIntStateOf(-1) }
+    val helpSteps = listOf(
+        HelpStep(HelpTarget.PRECISION_SEEK, "Slide your finger UP while dragging the seek bar for 10x more precision!"),
+        HelpStep(HelpTarget.CHAPTER_ZOOM, "Long press the seek bar to open Chapter Zoom for high-precision chapter navigation."),
+        HelpStep(HelpTarget.SPEED, "Tap here to change the playback speed (0.5x to 2.0x)."),
+        HelpStep(HelpTarget.TIMER, "Set a sleep timer or choose to stop playback at the end of the chapter."),
+        HelpStep(HelpTarget.BROWSE, "View and navigate through all chapters in the book."),
+        HelpStep(HelpTarget.CONTROLS, "Standard playback controls to play, pause, skip, or rewind.")
+    )
+    val targetCoordinates = remember { mutableStateMapOf<HelpTarget, LayoutCoordinates>() }
 
     LaunchedEffect(globalPosition) {
         val now = System.currentTimeMillis()
@@ -152,6 +178,11 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
+                actions = {
+                    IconButton(onClick = { currentHelpStepIndex = 0 }) {
+                        Icon(Icons.Default.HelpOutline, contentDescription = "Help", tint = MaterialTheme.colorScheme.onSurface)
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface
@@ -173,90 +204,107 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
         }
 
         val layoutModifier = Modifier.padding(padding)
-        if (isLandscape) {
-            LandscapeLayout(
-                modifier = layoutModifier,
-                currentTrack = currentTrack,
-                isPlaying = isPlaying,
-                sliderPosition = sliderPosition,
-                totalDuration = totalDuration,
-                remainingInChapter = remainingInChapter,
-                playbackSpeed = playbackSpeed,
-                stopAfterCurrentTrack = stopAfterCurrentTrack,
-                sleepTimerRemaining = sleepTimerRemaining,
-                isPrecise = isPrecise,
-                showUndoPrompt = showUndoPrompt,
-                undoPosition = undoPosition,
-                onUndo = {
-                    viewModel.seekToGlobal(undoPosition)
-                    sliderPosition = undoPosition
-                    lastSeekTime = System.currentTimeMillis()
-                    showUndoPrompt = false
-                },
-                sliderInteractionSource = sliderInteractionSource,
-                onTogglePlayPause = { viewModel.togglePlayPause() },
-                onPrevious = { viewModel.previous() },
-                onNext = { viewModel.next() },
-                onRewind = { viewModel.seekBack() },
-                onForward = { viewModel.seekForward() },
-                onShowSpeed = { showSpeedDialog = true },
-                onShowTimer = { showSleepTimerDialog = true },
-                onShowChapters = { showChaptersDialog = true },
-                onSliderValueChange = { sliderPosition = it; isSliderActive = true },
-                onGestureStart = { 
-                    originalPositionBeforeSeek = sliderPosition
-                    isDraggingGesture = true
-                    isPrecise = false 
-                },
-                onGestureEnd = onSeekFinished,
-                onGestureDelta = { deltaMs, precise -> 
-                    sliderPosition = (sliderPosition + deltaMs).coerceIn(0L, totalDuration)
-                    isPrecise = precise
-                },
-                onChapterPopupRequest = { showChapterSeekDialog = true }
-            )
-        } else {
-            PortraitLayout(
-                modifier = layoutModifier,
-                currentTrack = currentTrack,
-                isPlaying = isPlaying,
-                sliderPosition = sliderPosition,
-                totalDuration = totalDuration,
-                remainingInChapter = remainingInChapter,
-                playbackSpeed = playbackSpeed,
-                stopAfterCurrentTrack = stopAfterCurrentTrack,
-                sleepTimerRemaining = sleepTimerRemaining,
-                isPrecise = isPrecise,
-                showUndoPrompt = showUndoPrompt,
-                undoPosition = undoPosition,
-                onUndo = {
-                    viewModel.seekToGlobal(undoPosition)
-                    sliderPosition = undoPosition
-                    lastSeekTime = System.currentTimeMillis()
-                    showUndoPrompt = false
-                },
-                sliderInteractionSource = sliderInteractionSource,
-                onTogglePlayPause = { viewModel.togglePlayPause() },
-                onPrevious = { viewModel.previous() },
-                onNext = { viewModel.next() },
-                onRewind = { viewModel.seekBack() },
-                onForward = { viewModel.seekForward() },
-                onShowSpeed = { showSpeedDialog = true },
-                onShowTimer = { showSleepTimerDialog = true },
-                onShowChapters = { showChaptersDialog = true },
-                onSliderValueChange = { sliderPosition = it; isSliderActive = true },
-                onGestureStart = { 
-                    originalPositionBeforeSeek = sliderPosition
-                    isDraggingGesture = true
-                    isPrecise = false 
-                },
-                onGestureEnd = onSeekFinished,
-                onGestureDelta = { deltaMs, precise -> 
-                    sliderPosition = (sliderPosition + deltaMs).coerceIn(0L, totalDuration)
-                    isPrecise = precise
-                },
-                onChapterPopupRequest = { showChapterSeekDialog = true }
-            )
+        
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (isLandscape) {
+                LandscapeLayout(
+                    modifier = layoutModifier,
+                    currentTrack = currentTrack,
+                    isPlaying = isPlaying,
+                    sliderPosition = sliderPosition,
+                    totalDuration = totalDuration,
+                    remainingInChapter = remainingInChapter,
+                    playbackSpeed = playbackSpeed,
+                    stopAfterCurrentTrack = stopAfterCurrentTrack,
+                    sleepTimerRemaining = sleepTimerRemaining,
+                    isPrecise = isPrecise,
+                    showUndoPrompt = showUndoPrompt,
+                    undoPosition = undoPosition,
+                    onUndo = {
+                        viewModel.seekToGlobal(undoPosition)
+                        sliderPosition = undoPosition
+                        lastSeekTime = System.currentTimeMillis()
+                        showUndoPrompt = false
+                    },
+                    sliderInteractionSource = sliderInteractionSource,
+                    onTogglePlayPause = { viewModel.togglePlayPause() },
+                    onPrevious = { viewModel.previous() },
+                    onNext = { viewModel.next() },
+                    onRewind = { viewModel.seekBack() },
+                    onForward = { viewModel.seekForward() },
+                    onShowSpeed = { showSpeedDialog = true },
+                    onShowTimer = { showSleepTimerDialog = true },
+                    onShowChapters = { showChaptersDialog = true },
+                    onSliderValueChange = { sliderPosition = it; isSliderActive = true },
+                    onGestureStart = { 
+                        originalPositionBeforeSeek = sliderPosition
+                        isDraggingGesture = true
+                        isPrecise = false 
+                    },
+                    onGestureEnd = onSeekFinished,
+                    onGestureDelta = { deltaMs, precise -> 
+                        sliderPosition = (sliderPosition + deltaMs).coerceIn(0L, totalDuration)
+                        isPrecise = precise
+                    },
+                    onChapterPopupRequest = { showChapterSeekDialog = true },
+                    onTargetPositioned = { target, coords -> targetCoordinates[target] = coords }
+                )
+            } else {
+                PortraitLayout(
+                    modifier = layoutModifier,
+                    currentTrack = currentTrack,
+                    isPlaying = isPlaying,
+                    sliderPosition = sliderPosition,
+                    totalDuration = totalDuration,
+                    remainingInChapter = remainingInChapter,
+                    playbackSpeed = playbackSpeed,
+                    stopAfterCurrentTrack = stopAfterCurrentTrack,
+                    sleepTimerRemaining = sleepTimerRemaining,
+                    isPrecise = isPrecise,
+                    showUndoPrompt = showUndoPrompt,
+                    undoPosition = undoPosition,
+                    onUndo = {
+                        viewModel.seekToGlobal(undoPosition)
+                        sliderPosition = undoPosition
+                        lastSeekTime = System.currentTimeMillis()
+                        showUndoPrompt = false
+                    },
+                    sliderInteractionSource = sliderInteractionSource,
+                    onTogglePlayPause = { viewModel.togglePlayPause() },
+                    onPrevious = { viewModel.previous() },
+                    onNext = { viewModel.next() },
+                    onRewind = { viewModel.seekBack() },
+                    onForward = { viewModel.seekForward() },
+                    onShowSpeed = { showSpeedDialog = true },
+                    onShowTimer = { showSleepTimerDialog = true },
+                    onShowChapters = { showChaptersDialog = true },
+                    onSliderValueChange = { sliderPosition = it; isSliderActive = true },
+                    onGestureStart = { 
+                        originalPositionBeforeSeek = sliderPosition
+                        isDraggingGesture = true
+                        isPrecise = false 
+                    },
+                    onGestureEnd = onSeekFinished,
+                    onGestureDelta = { deltaMs, precise -> 
+                        sliderPosition = (sliderPosition + deltaMs).coerceIn(0L, totalDuration)
+                        isPrecise = precise
+                    },
+                    onChapterPopupRequest = { showChapterSeekDialog = true },
+                    onTargetPositioned = { target, coords -> targetCoordinates[target] = coords }
+                )
+            }
+
+            // Help Overlay
+            if (currentHelpStepIndex >= 0 && currentHelpStepIndex < helpSteps.size) {
+                HelpOverlay(
+                    step = helpSteps[currentHelpStepIndex],
+                    stepIndex = currentHelpStepIndex,
+                    totalSteps = helpSteps.size,
+                    targetCoordinates = targetCoordinates[helpSteps[currentHelpStepIndex].target],
+                    onNext = { currentHelpStepIndex++ },
+                    onDismiss = { currentHelpStepIndex = -1 }
+                )
+            }
         }
     }
 }
@@ -289,7 +337,8 @@ fun PortraitLayout(
     onGestureStart: () -> Unit,
     onGestureEnd: () -> Unit,
     onGestureDelta: (Long, Boolean) -> Unit,
-    onChapterPopupRequest: () -> Unit
+    onChapterPopupRequest: () -> Unit,
+    onTargetPositioned: (HelpTarget, LayoutCoordinates) -> Unit
 ) {
     Column(
         modifier = modifier
@@ -355,7 +404,11 @@ fun PortraitLayout(
             onGestureStart = onGestureStart,
             onGestureEnd = onGestureEnd,
             onGestureDelta = onGestureDelta,
-            onChapterPopupRequest = onChapterPopupRequest
+            onChapterPopupRequest = onChapterPopupRequest,
+            modifier = Modifier.onGloballyPositioned { coords ->
+                onTargetPositioned(HelpTarget.PRECISION_SEEK, coords)
+                onTargetPositioned(HelpTarget.CHAPTER_ZOOM, coords)
+            }
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -367,7 +420,8 @@ fun PortraitLayout(
             onRewind = onRewind,
             onForward = onForward,
             onTogglePlayPause = onTogglePlayPause,
-            playSize = 80.dp
+            playSize = 80.dp,
+            modifier = Modifier.onGloballyPositioned { onTargetPositioned(HelpTarget.CONTROLS, it) }
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -377,14 +431,16 @@ fun PortraitLayout(
             stopAfterCurrentTrack = stopAfterCurrentTrack,
             sleepTimerRemaining = sleepTimerRemaining,
             onShowSpeed = onShowSpeed,
-            onShowTimer = onShowTimer
+            onShowTimer = onShowTimer,
+            onSpeedPositioned = { onTargetPositioned(HelpTarget.SPEED, it) },
+            onTimerPositioned = { onTargetPositioned(HelpTarget.TIMER, it) }
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         TextButton(
             onClick = onShowChapters,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().onGloballyPositioned { onTargetPositioned(HelpTarget.BROWSE, it) }
         ) {
             Icon(Icons.AutoMirrored.Filled.FormatListBulleted, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
             Spacer(modifier = Modifier.width(8.dp))
@@ -421,7 +477,8 @@ fun LandscapeLayout(
     onGestureStart: () -> Unit,
     onGestureEnd: () -> Unit,
     onGestureDelta: (Long, Boolean) -> Unit,
-    onChapterPopupRequest: () -> Unit
+    onChapterPopupRequest: () -> Unit,
+    onTargetPositioned: (HelpTarget, LayoutCoordinates) -> Unit
 ) {
     Row(
         modifier = modifier
@@ -489,7 +546,11 @@ fun LandscapeLayout(
                 onGestureStart = onGestureStart,
                 onGestureEnd = onGestureEnd,
                 onGestureDelta = onGestureDelta,
-                onChapterPopupRequest = onChapterPopupRequest
+                onChapterPopupRequest = onChapterPopupRequest,
+                modifier = Modifier.onGloballyPositioned { coords ->
+                    onTargetPositioned(HelpTarget.PRECISION_SEEK, coords)
+                    onTargetPositioned(HelpTarget.CHAPTER_ZOOM, coords)
+                }
             )
 
             PlaybackControls(
@@ -500,7 +561,8 @@ fun LandscapeLayout(
                 onForward = onForward,
                 onTogglePlayPause = onTogglePlayPause,
                 iconSize = 32.dp,
-                playSize = 64.dp
+                playSize = 64.dp,
+                modifier = Modifier.onGloballyPositioned { onTargetPositioned(HelpTarget.CONTROLS, it) }
             )
 
             SettingsRow(
@@ -508,12 +570,14 @@ fun LandscapeLayout(
                 stopAfterCurrentTrack = stopAfterCurrentTrack,
                 sleepTimerRemaining = sleepTimerRemaining,
                 onShowSpeed = onShowSpeed,
-                onShowTimer = onShowTimer
+                onShowTimer = onShowTimer,
+                onSpeedPositioned = { onTargetPositioned(HelpTarget.SPEED, it) },
+                onTimerPositioned = { onTargetPositioned(HelpTarget.TIMER, it) }
             )
 
             TextButton(
                 onClick = onShowChapters,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().onGloballyPositioned { onTargetPositioned(HelpTarget.BROWSE, it) }
             ) {
                 Icon(Icons.AutoMirrored.Filled.FormatListBulleted, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurface)
                 Spacer(modifier = Modifier.width(8.dp))
@@ -568,9 +632,10 @@ fun ProgressBar(
     onGestureStart: () -> Unit,
     onGestureEnd: () -> Unit,
     onGestureDelta: (Long, Boolean) -> Unit,
-    onChapterPopupRequest: () -> Unit
+    onChapterPopupRequest: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column {
+    Column(modifier = modifier) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -789,10 +854,11 @@ fun PlaybackControls(
     onForward: () -> Unit,
     onTogglePlayPause: () -> Unit,
     iconSize: androidx.compose.ui.unit.Dp = 44.dp,
-    playSize: androidx.compose.ui.unit.Dp = 80.dp
+    playSize: androidx.compose.ui.unit.Dp = 80.dp,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -833,7 +899,9 @@ fun SettingsRow(
     stopAfterCurrentTrack: Boolean,
     sleepTimerRemaining: Long?,
     onShowSpeed: () -> Unit,
-    onShowTimer: () -> Unit
+    onShowTimer: () -> Unit,
+    onSpeedPositioned: (LayoutCoordinates) -> Unit = {},
+    onTimerPositioned: (LayoutCoordinates) -> Unit = {}
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -844,7 +912,8 @@ fun SettingsRow(
             onClick = onShowSpeed,
             shape = RoundedCornerShape(20.dp),
             color = MaterialTheme.colorScheme.secondaryContainer,
-            tonalElevation = 2.dp
+            tonalElevation = 2.dp,
+            modifier = Modifier.onGloballyPositioned(onSpeedPositioned)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -868,7 +937,8 @@ fun SettingsRow(
                 MaterialTheme.colorScheme.onSurface 
             else 
                 MaterialTheme.colorScheme.secondaryContainer,
-            tonalElevation = 2.dp
+            tonalElevation = 2.dp,
+            modifier = Modifier.onGloballyPositioned(onTimerPositioned)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -891,6 +961,126 @@ fun SettingsRow(
                     fontWeight = FontWeight.ExtraBold,
                     color = if (sleepTimerRemaining != null || stopAfterCurrentTrack) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSecondaryContainer
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun HelpOverlay(
+    step: HelpStep,
+    stepIndex: Int,
+    totalSteps: Int,
+    targetCoordinates: LayoutCoordinates?,
+    onNext: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "Arrow")
+    val arrowOffset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "ArrowAnim"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.75f))
+            .clickable(enabled = false) { }
+    ) {
+        if (targetCoordinates != null && targetCoordinates.isAttached) {
+            val position = targetCoordinates.positionInRoot()
+            val size = targetCoordinates.size
+            
+            // Arrow Drawing
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val arrowColor = Color(0xFF4CAF50) // Forest Green
+                val arrowX = position.x + size.width / 2
+                
+                // If it's the PRECISION_SEEK step, we point UP from the bar
+                val isPrecisionSeek = step.target == HelpTarget.PRECISION_SEEK
+                
+                val startY: Float
+                val endY: Float
+                val wingTipY: Float
+                
+                if (isPrecisionSeek) {
+                    // Arrow pointing UP from the bar
+                    startY = position.y - 10f - arrowOffset
+                    endY = position.y - 70f - arrowOffset
+                    wingTipY = endY + 20f // Wings below tip
+                } else {
+                    // Arrow pointing DOWN to the element
+                    startY = position.y - 70f - arrowOffset
+                    endY = position.y - 10f - arrowOffset
+                    wingTipY = endY - 20f // Wings above tip
+                }
+
+                drawLine(
+                    color = arrowColor,
+                    start = Offset(arrowX, startY),
+                    end = Offset(arrowX, endY),
+                    strokeWidth = 4.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+
+                val wingPath = Path().apply {
+                    moveTo(arrowX - 20f, wingTipY)
+                    lineTo(arrowX, endY)
+                    lineTo(arrowX + 20f, wingTipY)
+                }
+                drawPath(
+                    path = wingPath,
+                    color = arrowColor,
+                    style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
+                )
+            }
+
+            // Help Box
+            Surface(
+                modifier = Modifier
+                    .align(if (position.y > 400) Alignment.TopCenter else Alignment.BottomCenter)
+                    .padding(horizontal = 32.dp, vertical = 90.dp),
+                shape = RoundedCornerShape(24.dp),
+                color = MidnightGreen,
+                contentColor = Color.White,
+                tonalElevation = 8.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "${stepIndex + 1}/$totalSteps",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Text(
+                        text = step.text,
+                        color = Color.White, // Force white text for visibility
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        TextButton(onClick = onDismiss) {
+                            Text("SKIP", color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
+                        }
+                        Button(
+                            onClick = onNext,
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        ) {
+                            Text(if (stepIndex == totalSteps - 1) "FINISH" else "NEXT", fontWeight = FontWeight.ExtraBold)
+                        }
+                    }
+                }
             }
         }
     }
