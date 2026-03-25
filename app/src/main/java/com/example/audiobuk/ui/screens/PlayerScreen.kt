@@ -145,15 +145,15 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Playing Now", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary) },
+                title = { Text("Playing Now", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.primary
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         }
@@ -326,7 +326,7 @@ fun PortraitLayout(
             Text(
                 text = currentTrack?.title ?: "No Chapter Selected",
                 style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -336,7 +336,7 @@ fun PortraitLayout(
         Text(
             text = "Chapter ends in: ${formatTime(remainingInChapter)}",
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.secondary,
+            color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold
         )
 
@@ -373,9 +373,9 @@ fun PortraitLayout(
             onClick = onShowChapters,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Icon(Icons.AutoMirrored.Filled.FormatListBulleted, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Icon(Icons.AutoMirrored.Filled.FormatListBulleted, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Browse chapters", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+            Text("Browse chapters", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
         }
     }
 }
@@ -444,6 +444,7 @@ fun LandscapeLayout(
                 Text(
                     text = currentTrack?.artist ?: "Unknown Book",
                     style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -451,7 +452,7 @@ fun LandscapeLayout(
                 Text(
                     text = currentTrack?.title ?: "No Chapter",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -461,7 +462,7 @@ fun LandscapeLayout(
             Text(
                 text = "Chapter ends in: ${formatTime(remainingInChapter)}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.secondary,
+                color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
             )
 
@@ -500,9 +501,9 @@ fun LandscapeLayout(
                 onClick = onShowChapters,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(Icons.AutoMirrored.Filled.FormatListBulleted, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.AutoMirrored.Filled.FormatListBulleted, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Browse chapters", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
+                Text("Browse chapters", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.ExtraBold)
             }
         }
     }
@@ -671,7 +672,7 @@ fun ProgressBar(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(formatTime(sliderPosition), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-            Text(formatTime(totalDuration), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(formatTime(totalDuration), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -695,30 +696,30 @@ fun ChapterSeekDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
         modifier = Modifier.fillMaxWidth(0.92f),
-        containerColor = DeepBark,
+        containerColor = MidnightGreen,
         shape = RoundedCornerShape(32.dp),
         title = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 Text("Chapter Zoom", style = MaterialTheme.typography.headlineMedium, color = Color.White, fontWeight = FontWeight.ExtraBold)
-                Text(currentTrack?.title ?: "Current Chapter", style = MaterialTheme.typography.titleMedium, color = NeonLeaf, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(currentTrack?.title ?: "Current Chapter", style = MaterialTheme.typography.titleMedium, color = Color.White.copy(alpha = 0.8f), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
-                Text(formatTime(sliderPos), style = MaterialTheme.typography.displayMedium, color = NeonLeaf, fontWeight = FontWeight.ExtraBold)
+                Text(formatTime(sliderPos), style = MaterialTheme.typography.displayMedium, color = Color.White, fontWeight = FontWeight.ExtraBold)
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 Surface(
                     onClick = { isPreciseMode = !isPreciseMode },
                     shape = RoundedCornerShape(16.dp),
-                    color = if (isPreciseMode) NeonLeaf.copy(alpha = 0.2f) else Color.Transparent,
+                    color = if (isPreciseMode) Color.White.copy(alpha = 0.1f) else Color.Transparent,
                     border = if (isPreciseMode) null else androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
                 ) {
                     Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(if (isPreciseMode) Icons.Default.GpsFixed else Icons.Default.GpsNotFixed, contentDescription = null, tint = if (isPreciseMode) NeonLeaf else Color.White)
+                        Icon(if (isPreciseMode) Icons.Default.GpsFixed else Icons.Default.GpsNotFixed, contentDescription = null, tint = Color.White)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(if (isPreciseMode) "PRECISE SEEKING ON" else "Standard Seeking", color = if (isPreciseMode) NeonLeaf else Color.White, fontWeight = FontWeight.Bold)
+                        Text(if (isPreciseMode) "PRECISE SEEKING ON" else "Standard Seeking", color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 }
 
@@ -739,12 +740,12 @@ fun ChapterSeekDialog(
                             modifier = Modifier.height(8.dp),
                             thumbTrackGapSize = 0.dp,
                             colors = SliderDefaults.colors(
-                                activeTrackColor = NeonLeaf,
-                                inactiveTrackColor = NeonLeaf.copy(alpha = 0.2f)
+                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                inactiveTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
                             )
                         )
                     },
-                    colors = SliderDefaults.colors(activeTrackColor = NeonLeaf, inactiveTrackColor = NeonLeaf.copy(alpha = 0.2f))
+                    colors = SliderDefaults.colors(activeTrackColor = MaterialTheme.colorScheme.primary, inactiveTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
                 )
                 
                 if (isPreciseMode) {
@@ -768,7 +769,7 @@ fun ChapterSeekDialog(
             }
         },
         confirmButton = {
-            Button(onClick = { onSeek(sliderPos); onDismiss() }, colors = ButtonDefaults.buttonColors(containerColor = NeonLeaf, contentColor = DeepBark), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(56.dp)) {
+            Button(onClick = { onSeek(sliderPos); onDismiss() }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onSurface, contentColor = MidnightGreen), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(56.dp)) {
                 Text("APPLY POSITION", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
             }
         },
@@ -795,10 +796,10 @@ fun PlaybackControls(
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onPrevious) {
-            Icon(Icons.Default.SkipPrevious, contentDescription = "Previous", modifier = Modifier.size(iconSize), tint = MaterialTheme.colorScheme.primary)
+            Icon(Icons.Default.SkipPrevious, contentDescription = "Previous", modifier = Modifier.size(iconSize), tint = MaterialTheme.colorScheme.onSurface)
         }
         IconButton(onClick = onRewind) {
-            Icon(Icons.Default.Replay10, contentDescription = "Rewind 10s", modifier = Modifier.size(iconSize), tint = MaterialTheme.colorScheme.primary)
+            Icon(Icons.Default.Replay10, contentDescription = "Rewind 10s", modifier = Modifier.size(iconSize), tint = MaterialTheme.colorScheme.onSurface)
         }
         Surface(
             onClick = onTogglePlayPause,
@@ -817,10 +818,10 @@ fun PlaybackControls(
             }
         }
         IconButton(onClick = onForward) {
-            Icon(Icons.Default.Forward10, contentDescription = "Forward 10s", modifier = Modifier.size(iconSize), tint = MaterialTheme.colorScheme.primary)
+            Icon(Icons.Default.Forward10, contentDescription = "Forward 10s", modifier = Modifier.size(iconSize), tint = MaterialTheme.colorScheme.onSurface)
         }
         IconButton(onClick = onNext) {
-            Icon(Icons.Default.SkipNext, contentDescription = "Next", modifier = Modifier.size(iconSize), tint = MaterialTheme.colorScheme.primary)
+            Icon(Icons.Default.SkipNext, contentDescription = "Next", modifier = Modifier.size(iconSize), tint = MaterialTheme.colorScheme.onSurface)
         }
     }
 }
@@ -863,7 +864,7 @@ fun SettingsRow(
             onClick = onShowTimer,
             shape = RoundedCornerShape(20.dp),
             color = if (sleepTimerRemaining != null || stopAfterCurrentTrack) 
-                MaterialTheme.colorScheme.primary 
+                MaterialTheme.colorScheme.onSurface 
             else 
                 MaterialTheme.colorScheme.secondaryContainer,
             tonalElevation = 2.dp
@@ -876,7 +877,7 @@ fun SettingsRow(
                     Icons.Default.Timer, 
                     contentDescription = null, 
                     modifier = Modifier.size(24.dp), 
-                    tint = if (sleepTimerRemaining != null || stopAfterCurrentTrack) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
+                    tint = if (sleepTimerRemaining != null || stopAfterCurrentTrack) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSecondaryContainer
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
@@ -887,7 +888,7 @@ fun SettingsRow(
                     },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.ExtraBold,
-                    color = if (sleepTimerRemaining != null || stopAfterCurrentTrack) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
+                    color = if (sleepTimerRemaining != null || stopAfterCurrentTrack) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSecondaryContainer
                 )
             }
         }
