@@ -10,6 +10,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.*
@@ -556,9 +557,6 @@ fun ProgressBar(
     onGestureDelta: (Long, Boolean) -> Unit,
     onChapterPopupRequest: () -> Unit
 ) {
-    val scope = rememberCoroutineScope()
-    var holdJob by remember { mutableStateOf<Job?>(null) }
-
     Column {
         Box(
             modifier = Modifier
@@ -583,6 +581,7 @@ fun ProgressBar(
                 .height(56.dp)
         ) {
             Slider(
+                enabled = false,
                 value = sliderPosition.toFloat(),
                 onValueChange = { },
                 onValueChangeFinished = { },
@@ -621,46 +620,36 @@ fun ProgressBar(
                 modifier = Modifier
                     .fillMaxSize()
                     .pointerInput(totalDuration) {
-                        detectDragGestures(
-                            onDragStart = { offset ->
-                                onGestureStart()
+                        detectTapGestures(
+                            onTap = { offset ->
                                 val ratio = (offset.x / size.width).coerceIn(0f, 1f)
+                                onGestureStart()
                                 onSliderValueChange((ratio * totalDuration).toLong())
-                                holdJob?.cancel()
-                                holdJob = null
-                            },
-                            onDragEnd = { 
                                 onGestureEnd()
-                                holdJob?.cancel()
-                                holdJob = null
                             },
-                            onDragCancel = { 
-                                onGestureEnd()
-                                holdJob?.cancel()
-                                holdJob = null
+                            onLongPress = { onChapterPopupRequest() }
+                        )
+                    }
+                    .pointerInput(totalDuration) {
+                        detectDragGestures(
+                            onDragStart = { _ ->
+                                onGestureStart()
                             },
+                            onDragEnd = { onGestureEnd() },
+                            onDragCancel = { onGestureEnd() },
                             onDrag = { change, dragAmount ->
                                 change.consume()
                                 
-                                // Detect slide down + hold for chapter popup
-                                val isSlidingDown = change.position.y > size.height + 15f
-                                if (isSlidingDown) {
-                                    if (holdJob == null) {
-                                        holdJob = scope.launch {
-                                            delay(2000)
-                                            onChapterPopupRequest()
-                                            holdJob = null
-                                        }
-                                    }
-                                } else {
-                                    holdJob?.cancel()
-                                    holdJob = null
+                                // Stability Zone: Horizontal movement is ignored in the bottom half 
+                                // to ensure the long-press remains stable and accidental jumps are prevented.
+                                val isStabilityZone = change.position.y > size.height * 0.5f
+                                
+                                if (!isStabilityZone) {
+                                    val precise = change.position.y < 0
+                                    val sensitivity = if (precise) 0.1f else 1.0f
+                                    val deltaMs = ((dragAmount.x * sensitivity) / size.width.toFloat()) * totalDuration
+                                    onGestureDelta(deltaMs.toLong(), precise)
                                 }
-
-                                val precise = change.position.y < 0
-                                val sensitivity = if (precise) 0.1f else 1.0f
-                                val deltaMs = ((dragAmount.x * sensitivity) / size.width.toFloat()) * totalDuration
-                                onGestureDelta(deltaMs.toLong(), precise)
                             }
                         )
                     }
