@@ -5,61 +5,38 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.FormatListBulleted
-import androidx.compose.material.icons.filled.Forward10
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Replay10
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.audiobuk.R
 import com.example.audiobuk.model.AudioFile
 import com.example.audiobuk.ui.components.AudioArtwork
 import com.example.audiobuk.ui.dialogs.ChaptersDialog
@@ -69,6 +46,7 @@ import com.example.audiobuk.util.formatTime
 import com.example.audiobuk.util.formatTimerRemaining
 import com.example.audiobuk.viewmodel.AudioBookViewModel
 import kotlinx.coroutines.delay
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,27 +65,20 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     var showChaptersDialog by remember { mutableStateOf(false) }
 
-    // State for local slider position to avoid jumping
     var sliderPosition by remember { mutableLongStateOf(0L) }
     var isDraggingGesture by remember { mutableStateOf(false) }
     var isSliderActive by remember { mutableStateOf(false) }
     var isPrecise by remember { mutableStateOf(false) }
     
-    // Undo logic
     var originalPositionBeforeSeek by remember { mutableLongStateOf(0L) }
     var undoPosition by remember { mutableLongStateOf(0L) }
     var showUndoPrompt by remember { mutableStateOf(false) }
-    
-    // Lock sync for a short period after seeking to allow the player to catch up
     var lastSeekTime by remember { mutableLongStateOf(0L) }
     
     val sliderInteractionSource = remember { MutableInteractionSource() }
     val isSliderDragged by sliderInteractionSource.collectIsDraggedAsState()
-    
-    // Combined dragging state
     val isCurrentlyDragging = isDraggingGesture || isSliderDragged || isSliderActive
 
-    // Sync slider with global position ONLY when not dragging and not immediately after a seek
     LaunchedEffect(globalPosition) {
         val now = System.currentTimeMillis()
         if (!isCurrentlyDragging && now - lastSeekTime > 1000) {
@@ -115,7 +86,6 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
         }
     }
 
-    // Auto-hide undo prompt after 5 seconds
     LaunchedEffect(showUndoPrompt) {
         if (showUndoPrompt) {
             delay(5000)
@@ -158,19 +128,22 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Playing Now") },
+                title = { Text("Playing Now", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.primary)
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.primary
+                )
             )
         }
     ) { padding ->
         val onSeekFinished: () -> Unit = {
             val finalPos = sliderPosition
-            // Only show undo if we moved more than 5 seconds
-            if (Math.abs(finalPos - originalPositionBeforeSeek) > 5000) {
+            if (abs(finalPos - originalPositionBeforeSeek) > 5000) {
                 undoPosition = originalPositionBeforeSeek
                 showUndoPrompt = true
             }
@@ -181,16 +154,10 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
             isPrecise = false
         }
 
-        val onUndo = {
-            viewModel.seekToGlobal(undoPosition)
-            sliderPosition = undoPosition
-            lastSeekTime = System.currentTimeMillis()
-            showUndoPrompt = false
-        }
-
+        val layoutModifier = Modifier.padding(padding)
         if (isLandscape) {
             LandscapeLayout(
-                modifier = Modifier.padding(padding),
+                modifier = layoutModifier,
                 currentTrack = currentTrack,
                 isPlaying = isPlaying,
                 sliderPosition = sliderPosition,
@@ -202,7 +169,12 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
                 isPrecise = isPrecise,
                 showUndoPrompt = showUndoPrompt,
                 undoPosition = undoPosition,
-                onUndo = onUndo,
+                onUndo = {
+                    viewModel.seekToGlobal(undoPosition)
+                    sliderPosition = undoPosition
+                    lastSeekTime = System.currentTimeMillis()
+                    showUndoPrompt = false
+                },
                 sliderInteractionSource = sliderInteractionSource,
                 onTogglePlayPause = { viewModel.togglePlayPause() },
                 onPrevious = { viewModel.previous() },
@@ -213,7 +185,6 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
                 onShowTimer = { showSleepTimerDialog = true },
                 onShowChapters = { showChaptersDialog = true },
                 onSliderValueChange = { sliderPosition = it; isSliderActive = true },
-                onSliderValueChangeFinished = onSeekFinished,
                 onGestureStart = { 
                     originalPositionBeforeSeek = sliderPosition
                     isDraggingGesture = true
@@ -227,7 +198,7 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
             )
         } else {
             PortraitLayout(
-                modifier = Modifier.padding(padding),
+                modifier = layoutModifier,
                 currentTrack = currentTrack,
                 isPlaying = isPlaying,
                 sliderPosition = sliderPosition,
@@ -239,7 +210,12 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
                 isPrecise = isPrecise,
                 showUndoPrompt = showUndoPrompt,
                 undoPosition = undoPosition,
-                onUndo = onUndo,
+                onUndo = {
+                    viewModel.seekToGlobal(undoPosition)
+                    sliderPosition = undoPosition
+                    lastSeekTime = System.currentTimeMillis()
+                    showUndoPrompt = false
+                },
                 sliderInteractionSource = sliderInteractionSource,
                 onTogglePlayPause = { viewModel.togglePlayPause() },
                 onPrevious = { viewModel.previous() },
@@ -250,7 +226,6 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
                 onShowTimer = { showSleepTimerDialog = true },
                 onShowChapters = { showChaptersDialog = true },
                 onSliderValueChange = { sliderPosition = it; isSliderActive = true },
-                onSliderValueChangeFinished = onSeekFinished,
                 onGestureStart = { 
                     originalPositionBeforeSeek = sliderPosition
                     isDraggingGesture = true
@@ -291,7 +266,6 @@ fun PortraitLayout(
     onShowTimer: () -> Unit,
     onShowChapters: () -> Unit,
     onSliderValueChange: (Long) -> Unit,
-    onSliderValueChangeFinished: () -> Unit,
     onGestureStart: () -> Unit,
     onGestureEnd: () -> Unit,
     onGestureDelta: (Long, Boolean) -> Unit
@@ -303,66 +277,60 @@ fun PortraitLayout(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // Large Artwork with Undo Prompt Overlay
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .clip(MaterialTheme.shapes.extraLarge),
+                .clip(RoundedCornerShape(32.dp)),
             contentAlignment = Alignment.Center
         ) {
             AudioArtwork(
                 uri = currentTrack?.uri,
                 modifier = Modifier.fillMaxSize(),
-                iconSize = 120.dp
+                iconSize = 140.dp
             )
-            
-            UndoPrompt(
-                visible = showUndoPrompt,
-                undoTime = undoPosition,
-                onUndo = onUndo
-            )
+            UndoPrompt(visible = showUndoPrompt, undoTime = undoPosition, onUndo = onUndo)
         }
 
-        // Track Info
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = currentTrack?.title ?: "Unknown",
-                style = MaterialTheme.typography.headlineSmall,
+                text = currentTrack?.title ?: "No Track Selected",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = currentTrack?.artist ?: "Unknown Artist",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Text(
-                text = currentTrack?.artist ?: "Unknown Artist",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
         }
 
-        // Chapter countdown
         Text(
             text = "Chapter ends in: ${formatTime(remainingInChapter)}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.secondary,
+            fontWeight = FontWeight.Bold
         )
 
-        // Progress Bar
         ProgressBar(
             sliderPosition = sliderPosition,
             totalDuration = totalDuration,
             isPrecise = isPrecise,
             sliderInteractionSource = sliderInteractionSource,
             onSliderValueChange = onSliderValueChange,
-            onSliderValueChangeFinished = onSliderValueChangeFinished,
             onGestureStart = onGestureStart,
             onGestureEnd = onGestureEnd,
             onGestureDelta = onGestureDelta
         )
 
-        // Controls
         PlaybackControls(
             isPlaying = isPlaying,
             onPrevious = onPrevious,
@@ -372,7 +340,6 @@ fun PortraitLayout(
             onTogglePlayPause = onTogglePlayPause
         )
 
-        // Settings Row
         SettingsRow(
             playbackSpeed = playbackSpeed,
             stopAfterCurrentTrack = stopAfterCurrentTrack,
@@ -381,14 +348,13 @@ fun PortraitLayout(
             onShowTimer = onShowTimer
         )
 
-        // Browse Chapters
         TextButton(
             onClick = onShowChapters,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Icon(Icons.Default.FormatListBulleted, contentDescription = null)
+            Icon(Icons.AutoMirrored.Filled.FormatListBulleted, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Browse chapters")
+            Text("Browse chapters", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
         }
     }
 }
@@ -418,7 +384,6 @@ fun LandscapeLayout(
     onShowTimer: () -> Unit,
     onShowChapters: () -> Unit,
     onSliderValueChange: (Long) -> Unit,
-    onSliderValueChangeFinished: () -> Unit,
     onGestureStart: () -> Unit,
     onGestureEnd: () -> Unit,
     onGestureDelta: (Long, Boolean) -> Unit
@@ -430,28 +395,21 @@ fun LandscapeLayout(
         horizontalArrangement = Arrangement.spacedBy(24.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Artwork on the left with Undo Prompt Overlay
         Box(
             modifier = Modifier
                 .fillMaxHeight()
                 .aspectRatio(1f)
-                .clip(MaterialTheme.shapes.extraLarge),
+                .clip(RoundedCornerShape(32.dp)),
             contentAlignment = Alignment.Center
         ) {
             AudioArtwork(
                 uri = currentTrack?.uri,
                 modifier = Modifier.fillMaxSize(),
-                iconSize = 80.dp
+                iconSize = 100.dp
             )
-
-            UndoPrompt(
-                visible = showUndoPrompt,
-                undoTime = undoPosition,
-                onUndo = onUndo
-            )
+            UndoPrompt(visible = showUndoPrompt, undoTime = undoPosition, onUndo = onUndo)
         }
 
-        // All controls on the right in a scrollable column
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -460,47 +418,42 @@ fun LandscapeLayout(
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Track Info
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = currentTrack?.title ?: "Unknown",
+                    text = currentTrack?.title ?: "No Track",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = currentTrack?.artist ?: "Unknown Artist",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Chapter countdown
             Text(
                 text = "Chapter ends in: ${formatTime(remainingInChapter)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.secondary,
+                fontWeight = FontWeight.Bold
             )
 
-            // Progress Bar
             ProgressBar(
                 sliderPosition = sliderPosition,
                 totalDuration = totalDuration,
                 isPrecise = isPrecise,
                 sliderInteractionSource = sliderInteractionSource,
                 onSliderValueChange = onSliderValueChange,
-                onSliderValueChangeFinished = onSliderValueChangeFinished,
                 onGestureStart = onGestureStart,
                 onGestureEnd = onGestureEnd,
                 onGestureDelta = onGestureDelta
             )
 
-            // Controls
             PlaybackControls(
                 isPlaying = isPlaying,
                 onPrevious = onPrevious,
@@ -509,10 +462,9 @@ fun LandscapeLayout(
                 onForward = onForward,
                 onTogglePlayPause = onTogglePlayPause,
                 iconSize = 40.dp,
-                playSize = 64.dp
+                playSize = 72.dp
             )
 
-            // Settings Row
             SettingsRow(
                 playbackSpeed = playbackSpeed,
                 stopAfterCurrentTrack = stopAfterCurrentTrack,
@@ -521,14 +473,13 @@ fun LandscapeLayout(
                 onShowTimer = onShowTimer
             )
 
-            // Browse Chapters
             TextButton(
                 onClick = onShowChapters,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(Icons.Default.FormatListBulleted, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.AutoMirrored.Filled.FormatListBulleted, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Browse chapters")
+                Text("Browse chapters", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
             }
         }
     }
@@ -548,28 +499,28 @@ fun UndoPrompt(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.4f))
+                .background(Color.Black.copy(alpha = 0.5f))
                 .clickable(onClick = onUndo),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "Go back to: ${formatTime(undoTime)}?",
                 color = Color.White,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    lineHeight = 24.sp
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 20.sp
                 ),
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .padding(24.dp)
-                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
+                    .padding(horizontal = 20.dp, vertical = 14.dp)
             )
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProgressBar(
     sliderPosition: Long,
@@ -577,7 +528,6 @@ fun ProgressBar(
     isPrecise: Boolean,
     sliderInteractionSource: MutableInteractionSource,
     onSliderValueChange: (Long) -> Unit,
-    onSliderValueChangeFinished: () -> Unit,
     onGestureStart: () -> Unit,
     onGestureEnd: () -> Unit,
     onGestureDelta: (Long, Boolean) -> Unit
@@ -591,9 +541,11 @@ fun ProgressBar(
         ) {
             if (isPrecise) {
                 Text(
-                    "Precise Seeking",
+                    "PRECISE SEEKING",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 1.sp
                 )
             }
         }
@@ -601,18 +553,43 @@ fun ProgressBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
+                .height(56.dp)
         ) {
             Slider(
                 value = sliderPosition.toFloat(),
-                onValueChange = { }, // Controlled by overlay
+                onValueChange = { },
                 onValueChangeFinished = { },
                 valueRange = 0f..totalDuration.toFloat().coerceAtLeast(1f),
                 interactionSource = sliderInteractionSource,
-                modifier = Modifier.align(Alignment.Center)
+                modifier = Modifier.align(Alignment.Center),
+                thumb = {
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .graphicsLayer(rotationZ = -20f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.mipmap.ic_leaf_colorful_foreground),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                },
+                track = { sliderState ->
+                    SliderDefaults.Track(
+                        sliderState = sliderState,
+                        modifier = Modifier.height(8.dp),
+                        thumbTrackGapSize = 0.dp,
+                        colors = SliderDefaults.colors(
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                            inactiveTrackColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                        )
+                    )
+                }
             )
             
-            // Gesture Overlay - Siblings placed after are on top in a Box
             Spacer(
                 modifier = Modifier
                     .fillMaxSize()
@@ -620,7 +597,6 @@ fun ProgressBar(
                         detectDragGestures(
                             onDragStart = { offset ->
                                 onGestureStart()
-                                // Snap to the touched position immediately
                                 val ratio = (offset.x / size.width).coerceIn(0f, 1f)
                                 onSliderValueChange((ratio * totalDuration).toLong())
                             },
@@ -628,14 +604,9 @@ fun ProgressBar(
                             onDragCancel = { onGestureEnd() },
                             onDrag = { change, dragAmount ->
                                 change.consume()
-                                // Precise seeking activates whenever the finger is above the progress bar container
-                                // change.position.y is relative to this 48.dp box (0 at top, 48 at bottom)
                                 val precise = change.position.y < 0
-                                
-                                val totalWidth = size.width.toFloat()
                                 val sensitivity = if (precise) 0.1f else 1.0f
-                                val deltaPx = dragAmount.x * sensitivity
-                                val deltaMs = (deltaPx / totalWidth) * totalDuration
+                                val deltaMs = ((dragAmount.x * sensitivity) / size.width.toFloat()) * totalDuration
                                 onGestureDelta(deltaMs.toLong(), precise)
                             }
                         )
@@ -647,8 +618,8 @@ fun ProgressBar(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(formatTime(sliderPosition), style = MaterialTheme.typography.labelMedium)
-            Text(formatTime(totalDuration), style = MaterialTheme.typography.labelMedium)
+            Text(formatTime(sliderPosition), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Text(formatTime(totalDuration), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -661,7 +632,7 @@ fun PlaybackControls(
     onRewind: () -> Unit,
     onForward: () -> Unit,
     onTogglePlayPause: () -> Unit,
-    iconSize: androidx.compose.ui.unit.Dp = 44.dp,
+    iconSize: androidx.compose.ui.unit.Dp = 48.dp,
     playSize: androidx.compose.ui.unit.Dp = 84.dp
 ) {
     Row(
@@ -670,30 +641,32 @@ fun PlaybackControls(
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onPrevious) {
-            Icon(Icons.Default.SkipPrevious, contentDescription = "Previous", modifier = Modifier.size(iconSize))
+            Icon(Icons.Default.SkipPrevious, contentDescription = "Previous", modifier = Modifier.size(iconSize), tint = MaterialTheme.colorScheme.primary)
         }
         IconButton(onClick = onRewind) {
-            Icon(Icons.Default.Replay10, contentDescription = "Rewind 10s", modifier = Modifier.size(iconSize))
+            Icon(Icons.Default.Replay10, contentDescription = "Rewind 10s", modifier = Modifier.size(iconSize), tint = MaterialTheme.colorScheme.primary)
         }
         Surface(
             onClick = onTogglePlayPause,
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.primaryContainer,
-            modifier = Modifier.size(playSize)
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(playSize),
+            shadowElevation = 8.dp
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = "Play/Pause",
-                    modifier = Modifier.size(playSize * 0.55f)
+                    modifier = Modifier.size(playSize * 0.6f),
+                    tint = MaterialTheme.colorScheme.onPrimary
                 )
             }
         }
         IconButton(onClick = onForward) {
-            Icon(Icons.Default.Forward10, contentDescription = "Forward 10s", modifier = Modifier.size(iconSize))
+            Icon(Icons.Default.Forward10, contentDescription = "Forward 10s", modifier = Modifier.size(iconSize), tint = MaterialTheme.colorScheme.primary)
         }
         IconButton(onClick = onNext) {
-            Icon(Icons.Default.SkipNext, contentDescription = "Next", modifier = Modifier.size(iconSize))
+            Icon(Icons.Default.SkipNext, contentDescription = "Next", modifier = Modifier.size(iconSize), tint = MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -713,45 +686,54 @@ fun SettingsRow(
     ) {
         Surface(
             onClick = onShowSpeed,
-            shape = MaterialTheme.shapes.medium,
-            color = MaterialTheme.colorScheme.secondaryContainer
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            tonalElevation = 2.dp
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
             ) {
-                Icon(Icons.Default.Speed, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(6.dp))
+                Icon(Icons.Default.Speed, contentDescription = null, modifier = Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = "${"%.1f".format(playbackSpeed)}x",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
             }
         }
 
         Surface(
             onClick = onShowTimer,
-            shape = MaterialTheme.shapes.medium,
+            shape = RoundedCornerShape(20.dp),
             color = if (sleepTimerRemaining != null || stopAfterCurrentTrack) 
-                MaterialTheme.colorScheme.primaryContainer 
+                MaterialTheme.colorScheme.primary 
             else 
-                MaterialTheme.colorScheme.secondaryContainer
+                MaterialTheme.colorScheme.secondaryContainer,
+            tonalElevation = 2.dp
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
             ) {
-                Icon(Icons.Default.Timer, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(6.dp))
+                Icon(
+                    Icons.Default.Timer, 
+                    contentDescription = null, 
+                    modifier = Modifier.size(24.dp), 
+                    tint = if (sleepTimerRemaining != null || stopAfterCurrentTrack) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = when {
-                        stopAfterCurrentTrack -> "Chapter End"
+                        stopAfterCurrentTrack -> "Ch. End"
                         sleepTimerRemaining != null -> formatTimerRemaining(sleepTimerRemaining)
                         else -> "Timer"
                     },
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (sleepTimerRemaining != null || stopAfterCurrentTrack) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
                 )
             }
         }
