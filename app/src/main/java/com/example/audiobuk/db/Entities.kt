@@ -20,7 +20,7 @@ data class AudioFileEntity(
     val displayName: String,
     val artist: String,
     val title: String,
-    val duration: Int
+    val duration: Long
 )
 
 data class PlaylistWithAudioFiles(

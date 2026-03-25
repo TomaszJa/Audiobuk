@@ -11,15 +11,10 @@ import com.example.audiobuk.player.AudioPlayer
 import com.example.audiobuk.repository.AudioBookRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
-class MusicViewModel(application: Application) : AndroidViewModel(application) {
+class AudioBookViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AudioBookRepository(application)
     private val prefs = application.getSharedPreferences("audiobuk_prefs", Context.MODE_PRIVATE)
     
@@ -49,13 +44,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     val currentAudioBook: StateFlow<AudioBook?> = _currentAudioBook
 
     private val player = AudioPlayer(application) { uri, position ->
-        viewModelScope.launch {
-            _playlists.value.find { playlist -> 
-                playlist.audioFiles.any { it.uri == uri }
-            }?.let { playlist ->
-                repository.updatePlaybackState(playlist.uri, uri, position)
-            }
-        }
+        savePlaybackProgress(uri, position)
     }
     
     val isPlaying = player.isPlaying
@@ -65,7 +54,24 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     val playbackSpeed = player.playbackSpeed
     val stopAfterCurrentTrack = player.stopAfterCurrentTrack
 
-    private val _sleepTimerRemaining = MutableStateFlow<Long?>(null) // Remaining time in seconds
+    // Whole book progress logic
+    val totalBookDuration: StateFlow<Long> = _currentAudioBook.map { book ->
+        book?.audioFiles?.sumOf { it.duration } ?: 0L
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
+
+    val globalPosition: StateFlow<Long> = combine(currentTrack, currentPosition, _currentAudioBook) { track, pos, book ->
+        if (track == null || book == null) return@combine 0L
+        val precedingDuration = book.audioFiles
+            .takeWhile { it.uri != track.uri }
+            .sumOf { it.duration }
+        precedingDuration + pos
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
+
+    val remainingInChapter: StateFlow<Long> = combine(currentPosition, duration) { pos, dur ->
+        (dur - pos).coerceAtLeast(0L)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
+
+    private val _sleepTimerRemaining = MutableStateFlow<Long?>(null)
     val sleepTimerRemaining: StateFlow<Long?> = _sleepTimerRemaining
     private var sleepTimerJob: Job? = null
 
@@ -77,17 +83,38 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             observePlaylists()
             refreshLibrary(uri)
         }
+        
+        // Save progress every 10 seconds as a safety net
+        viewModelScope.launch {
+            while (true) {
+                delay(10000)
+                if (isPlaying.value) {
+                    currentTrack.value?.uri?.let { uri ->
+                        savePlaybackProgress(uri, currentPosition.value)
+                    }
+                }
+            }
+        }
     }
 
     private fun observePlaylists() {
         viewModelScope.launch {
             repository.getPlaylistsFlow().collectLatest {
                 _playlists.value = it
-                // If we are playing something, try to update the current playlist reference
                 val currentTrackUri = player.currentTrack.value?.uri
                 if (currentTrackUri != null) {
                     _currentAudioBook.value = it.find { p -> p.audioFiles.any { f -> f.uri == currentTrackUri } }
                 }
+            }
+        }
+    }
+
+    private fun savePlaybackProgress(uri: Uri, position: Long) {
+        viewModelScope.launch {
+            _playlists.value.find { playlist -> 
+                playlist.audioFiles.any { it.uri == uri }
+            }?.let { playlist ->
+                repository.updatePlaybackState(playlist.uri, uri, position)
             }
         }
     }
@@ -134,7 +161,6 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             )
             _currentAudioBook.value = audioBook
         } else {
-            // Even if already playing, update current playlist to the latest one from DB
             _currentAudioBook.value = audioBook
         }
         _showPlayerScreen.value = true
@@ -146,6 +172,21 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     fun togglePlayPause() {
         player.togglePlayPause()
+    }
+
+    fun seekToGlobal(globalPosMs: Long) {
+        val book = _currentAudioBook.value ?: return
+        var accumulated = 0L
+        book.audioFiles.forEachIndexed { index, audioFile ->
+            if (globalPosMs < accumulated + audioFile.duration) {
+                val localPos = globalPosMs - accumulated
+                player.seekTo(index, localPos)
+                return
+            }
+            accumulated += audioFile.duration
+        }
+        // If it's at the very end
+        player.seekTo(book.audioFiles.size - 1, book.audioFiles.last().duration)
     }
 
     fun seekTo(positionMs: Long) {
@@ -185,7 +226,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        if (minutes == -1) { // -1 represents "Chapter end"
+        if (minutes == -1) { 
             player.setStopAfterCurrentTrack(true)
             _sleepTimerRemaining.value = null
             return

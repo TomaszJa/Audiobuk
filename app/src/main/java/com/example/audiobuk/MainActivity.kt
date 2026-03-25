@@ -13,18 +13,25 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.audiobuk.ui.screens.LibraryScreen
 import com.example.audiobuk.ui.screens.PlayerScreen
 import com.example.audiobuk.ui.theme.AudiobukTheme
-import com.example.audiobuk.viewmodel.MusicViewModel
+import com.example.audiobuk.viewmodel.AudioBookViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 
 class MainActivity : ComponentActivity() {
+    private val intentFlow = MutableStateFlow<Intent?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        
+        intentFlow.value = intent
+
         setContent {
             AudiobukTheme {
-                val viewModel: MusicViewModel = viewModel()
+                val viewModel: AudioBookViewModel = viewModel()
+                val currentIntent by intentFlow.collectAsState()
                 
-                LaunchedEffect(intent) {
-                    handleIntent(intent, viewModel)
+                LaunchedEffect(currentIntent) {
+                    currentIntent?.let { handleIntent(it, viewModel) }
                 }
                 
                 MainApp(viewModel)
@@ -34,19 +41,19 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        // This is called if the activity is already running (e.g. user clicks notification while app is in background)
         setIntent(intent)
+        intentFlow.value = intent
     }
 
-    private fun handleIntent(intent: Intent?, viewModel: MusicViewModel) {
-        if (intent?.action == "com.example.audiobuk.OPEN_PLAYER") {
+    private fun handleIntent(intent: Intent, viewModel: AudioBookViewModel) {
+        if (intent.action == "com.example.audiobuk.OPEN_PLAYER") {
             viewModel.setShowPlayerScreen(true)
         }
     }
 }
 
 @Composable
-fun MainApp(viewModel: MusicViewModel) {
+fun MainApp(viewModel: AudioBookViewModel) {
     val showPlayerScreen by viewModel.showPlayerScreen.collectAsState()
 
     if (showPlayerScreen) {

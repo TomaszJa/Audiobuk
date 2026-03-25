@@ -1,26 +1,29 @@
 package com.example.audiobuk.repository
 
 import android.content.Context
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import com.example.audiobuk.db.*
 import com.example.audiobuk.model.AudioFile
 import com.example.audiobuk.model.AudioBook
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 
 class AudioBookRepository(private val context: Context) {
     private val db = AppDatabase.getDatabase(context)
     private val musicDao = db.musicDao()
 
     fun getPlaylistsFlow(): Flow<List<AudioBook>> {
-        return musicDao.getAllPlaylists().map { entities ->
-            entities.map { entity ->
-                val audioFileEntities = musicDao.getAudioFilesForPlaylist(entity.uri)
+        return musicDao.getPlaylistsWithAudioFiles().map { entities ->
+            entities.map { playlistWithFiles ->
+                val entity = playlistWithFiles.playlist
                 AudioBook(
                     uri = Uri.parse(entity.uri),
                     name = entity.name,
-                    audioFiles = audioFileEntities.map { it.toModel() },
+                    audioFiles = playlistWithFiles.audioFiles.map { it.toModel() },
                     lastPlayedUri = entity.lastPlayedAudioUri?.let { Uri.parse(it) },
                     lastPositionMs = entity.lastPositionMs
                 )
@@ -28,8 +31,8 @@ class AudioBookRepository(private val context: Context) {
         }
     }
 
-    suspend fun refreshLibrary(rootUri: Uri) {
-        val rootDoc = DocumentFile.fromTreeUri(context, rootUri) ?: return
+    suspend fun refreshLibrary(rootUri: Uri) = withContext(Dispatchers.IO) {
+        val rootDoc = DocumentFile.fromTreeUri(context, rootUri) ?: return@withContext
         val existingPlaylistUris = musicDao.getAllPlaylistUris().toSet()
         
         val currentSubDirs = rootDoc.listFiles().filter { it.isDirectory }
@@ -42,53 +45,71 @@ class AudioBookRepository(private val context: Context) {
             }
         }
 
-        val newPlaylistEntities = mutableListOf<PlaylistEntity>()
-        val newAudioFileEntities = mutableListOf<AudioFileEntity>()
+        val retriever = MediaMetadataRetriever()
 
-        // 2. Add new playlists found in filesystem
+        // 2. Add or Update playlists
         currentSubDirs.forEach { subDir ->
             val subDirUri = subDir.uri.toString()
+            val subDirName = subDir.name ?: "Unknown"
             
-            // Only scan if this directory is not already in our database
-            if (!existingPlaylistUris.contains(subDirUri)) {
-                val subDirName = subDir.name ?: "Unknown"
-                val audioFiles = mutableListOf<AudioFileEntity>()
-                
-                subDir.listFiles().forEach { file ->
-                    if (file.isFile && isAudioFile(file.name)) {
-                        audioFiles.add(
-                            AudioFileEntity(
-                                uri = file.uri.toString(),
-                                playlistUri = subDirUri,
-                                displayName = file.name ?: "Unknown",
-                                artist = subDirName,
-                                title = file.name?.substringBeforeLast(".") ?: "Unknown",
-                                duration = 0
-                            )
+            val existingFiles = if (existingPlaylistUris.contains(subDirUri)) {
+                musicDao.getAudioFilesForPlaylist(subDirUri).associateBy { it.uri }
+            } else {
+                emptyMap()
+            }
+
+            val audioFilesToInsert = mutableListOf<AudioFileEntity>()
+            val audioFilesToUpdate = mutableListOf<AudioFileEntity>()
+            
+            subDir.listFiles().forEach { file ->
+                if (file.isFile && isAudioFile(file.name)) {
+                    val fileUri = file.uri.toString()
+                    val existingFile = existingFiles[fileUri]
+                    
+                    if (existingFile == null || existingFile.duration == 0L) {
+                        var duration = 0L
+                        try {
+                            retriever.setDataSource(context, file.uri)
+                            duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLong() ?: 0L
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+
+                        val entity = AudioFileEntity(
+                            uri = fileUri,
+                            playlistUri = subDirUri,
+                            displayName = file.name ?: "Unknown",
+                            artist = subDirName,
+                            title = file.name?.substringBeforeLast(".") ?: "Unknown",
+                            duration = duration
                         )
+                        
+                        if (existingFile == null) audioFilesToInsert.add(entity)
+                        else audioFilesToUpdate.add(entity)
                     }
                 }
-                
-                if (audioFiles.isNotEmpty()) {
-                    newPlaylistEntities.add(
-                        PlaylistEntity(
-                            uri = subDirUri,
-                            name = subDirName,
-                            lastPlayedAudioUri = null,
-                            lastPositionMs = 0L
-                        )
+            }
+            
+            if (!existingPlaylistUris.contains(subDirUri)) {
+                if (audioFilesToInsert.isNotEmpty()) {
+                    musicDao.refreshLibrary(
+                        listOf(PlaylistEntity(uri = subDirUri, name = subDirName)),
+                        audioFilesToInsert
                     )
-                    newAudioFileEntities.addAll(audioFiles)
+                }
+            } else {
+                if (audioFilesToInsert.isNotEmpty()) {
+                    musicDao.insertAudioFiles(audioFilesToInsert)
+                }
+                if (audioFilesToUpdate.isNotEmpty()) {
+                    musicDao.updateAudioFiles(audioFilesToUpdate)
                 }
             }
         }
-        
-        if (newPlaylistEntities.isNotEmpty()) {
-            musicDao.refreshLibrary(newPlaylistEntities, newAudioFileEntities)
-        }
+        retriever.release()
     }
 
-    suspend fun updatePlaybackState(playlistUri: Uri, audioUri: Uri, positionMs: Long) {
+    suspend fun updatePlaybackState(playlistUri: Uri, audioUri: Uri, positionMs: Long) = withContext(Dispatchers.IO) {
         val playlist = musicDao.getPlaylistByUri(playlistUri.toString())
         if (playlist != null) {
             musicDao.updatePlaylist(playlist.copy(
@@ -99,7 +120,9 @@ class AudioBookRepository(private val context: Context) {
     }
 
     private fun isAudioFile(fileName: String?): Boolean {
-        return fileName?.lowercase()?.endsWith(".mp3") == true
+        return fileName?.lowercase()?.let { 
+            it.endsWith(".mp3") || it.endsWith(".m4a") || it.endsWith(".m4b") || it.endsWith(".wav")
+        } ?: false
     }
 
     private fun AudioFileEntity.toModel() = AudioFile(
