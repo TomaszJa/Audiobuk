@@ -294,7 +294,7 @@ fun PortraitLayout(
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = currentTrack?.title ?: "No Track Selected",
+                text = currentTrack?.artist ?: "Unknown Book",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -304,7 +304,7 @@ fun PortraitLayout(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = currentTrack?.artist ?: "Unknown Artist",
+                text = currentTrack?.title ?: "No Chapter Selected",
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
@@ -420,14 +420,14 @@ fun LandscapeLayout(
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = currentTrack?.title ?: "No Track",
+                    text = currentTrack?.artist ?: "Unknown Book",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = currentTrack?.artist ?: "Unknown Artist",
+                    text = currentTrack?.title ?: "No Chapter",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
