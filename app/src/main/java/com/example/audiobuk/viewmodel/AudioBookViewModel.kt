@@ -9,7 +9,6 @@ import com.example.audiobuk.model.AudioFile
 import com.example.audiobuk.model.AudioBook
 import com.example.audiobuk.player.AudioPlayer
 import com.example.audiobuk.repository.AudioBookRepository
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -53,6 +52,7 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
     val duration = player.duration
     val playbackSpeed = player.playbackSpeed
     val stopAfterCurrentTrack = player.stopAfterCurrentTrack
+    val sleepTimerRemaining = player.sleepTimerRemaining
 
     // Whole book progress logic
     val totalBookDuration: StateFlow<Long> = _currentAudioBook.map { book ->
@@ -70,10 +70,6 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
     val remainingInChapter: StateFlow<Long> = combine(currentPosition, duration) { pos, dur ->
         (dur - pos).coerceAtLeast(0L)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
-
-    private val _sleepTimerRemaining = MutableStateFlow<Long?>(null)
-    val sleepTimerRemaining: StateFlow<Long?> = _sleepTimerRemaining
-    private var sleepTimerJob: Job? = null
 
     init {
         val savedUri = prefs.getString("root_uri", null)
@@ -218,32 +214,13 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun setSleepTimer(minutes: Int?) {
-        sleepTimerJob?.cancel()
-        player.setStopAfterCurrentTrack(false)
-        
         if (minutes == null) {
-            _sleepTimerRemaining.value = null
-            return
-        }
-
-        if (minutes == -1) { 
-            player.setStopAfterCurrentTrack(true)
-            _sleepTimerRemaining.value = null
-            return
-        }
-
-        val totalSeconds = minutes * 60L
-        _sleepTimerRemaining.value = totalSeconds
-        
-        sleepTimerJob = viewModelScope.launch {
-            var remaining = totalSeconds
-            while (remaining > 0) {
-                delay(1000)
-                remaining--
-                _sleepTimerRemaining.value = remaining
-            }
-            player.pause()
-            _sleepTimerRemaining.value = null
+            player.setSleepTimer(0)
+            player.setStopAfterChapter(false)
+        } else if (minutes == -1) {
+            player.setStopAfterChapter(true)
+        } else {
+            player.setSleepTimer(minutes)
         }
     }
 
