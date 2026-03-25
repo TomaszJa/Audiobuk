@@ -20,8 +20,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.audiobuk.R
 
 @Composable
 fun PlaybackControls(
@@ -41,10 +43,10 @@ fun PlaybackControls(
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onPrevious) {
-            Icon(Icons.Default.SkipPrevious, contentDescription = "Previous", modifier = Modifier.size(iconSize), tint = MaterialTheme.colorScheme.onSurface)
+            Icon(Icons.Default.SkipPrevious, contentDescription = stringResource(R.string.previous), modifier = Modifier.size(iconSize), tint = MaterialTheme.colorScheme.onSurface)
         }
         IconButton(onClick = onRewind) {
-            Icon(Icons.Default.Replay10, contentDescription = "Rewind 10s", modifier = Modifier.size(iconSize), tint = MaterialTheme.colorScheme.onSurface)
+            Icon(Icons.Default.Replay10, contentDescription = stringResource(R.string.rewind_10s), modifier = Modifier.size(iconSize), tint = MaterialTheme.colorScheme.onSurface)
         }
         Surface(
             onClick = onTogglePlayPause,
@@ -56,17 +58,17 @@ fun PlaybackControls(
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = "Play/Pause",
+                    contentDescription = if (isPlaying) stringResource(R.string.pause) else stringResource(R.string.play),
                     modifier = Modifier.size(playSize * 0.6f),
                     tint = MaterialTheme.colorScheme.onPrimary
                 )
             }
         }
         IconButton(onClick = onForward) {
-            Icon(Icons.Default.Forward10, contentDescription = "Forward 10s", modifier = Modifier.size(iconSize), tint = MaterialTheme.colorScheme.onSurface)
+            Icon(Icons.Default.Forward10, contentDescription = stringResource(R.string.forward_30s), modifier = Modifier.size(iconSize), tint = MaterialTheme.colorScheme.onSurface)
         }
         IconButton(onClick = onNext) {
-            Icon(Icons.Default.SkipNext, contentDescription = "Next", modifier = Modifier.size(iconSize), tint = MaterialTheme.colorScheme.onSurface)
+            Icon(Icons.Default.SkipNext, contentDescription = stringResource(R.string.next), modifier = Modifier.size(iconSize), tint = MaterialTheme.colorScheme.onSurface)
         }
     }
 }

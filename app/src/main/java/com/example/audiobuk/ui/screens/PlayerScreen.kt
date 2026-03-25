@@ -14,7 +14,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.example.audiobuk.R
 import com.example.audiobuk.ui.components.*
 import com.example.audiobuk.ui.dialogs.ChapterSeekDialog
 import com.example.audiobuk.ui.dialogs.ChaptersDialog
@@ -60,12 +62,12 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
     // Help State
     var currentHelpStepIndex by remember { mutableIntStateOf(-1) }
     val helpSteps = listOf(
-        HelpStep(HelpTarget.PRECISION_SEEK, "Slide your finger UP while dragging the seek bar for 10x more precision!"),
-        HelpStep(HelpTarget.CHAPTER_ZOOM, "Long press the seek bar to open Chapter Zoom for high-precision chapter navigation."),
-        HelpStep(HelpTarget.SPEED, "Tap here to change the playback speed (0.5x to 2.0x)."),
-        HelpStep(HelpTarget.TIMER, "Set a sleep timer or choose to stop playback at the end of the chapter."),
-        HelpStep(HelpTarget.BROWSE, "View and navigate through all chapters in the book."),
-        HelpStep(HelpTarget.CONTROLS, "Standard playback controls to play, pause, skip, or rewind.")
+        HelpStep(HelpTarget.PRECISION_SEEK, stringResource(R.string.help_step_precision_seek)),
+        HelpStep(HelpTarget.CHAPTER_ZOOM, stringResource(R.string.help_step_chapter_zoom)),
+        HelpStep(HelpTarget.SPEED, stringResource(R.string.help_step_speed)),
+        HelpStep(HelpTarget.TIMER, stringResource(R.string.help_step_timer)),
+        HelpStep(HelpTarget.BROWSE, stringResource(R.string.help_step_browse)),
+        HelpStep(HelpTarget.CONTROLS, stringResource(R.string.help_step_controls))
     )
     val targetCoordinates = remember { mutableStateMapOf<HelpTarget, LayoutCoordinates>() }
 
@@ -128,15 +130,15 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Playing Now", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface) },
+                title = { Text(stringResource(R.string.playing_now), fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back), tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
                 actions = {
                     IconButton(onClick = { currentHelpStepIndex = 0 }) {
-                        Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "Help", tint = MaterialTheme.colorScheme.onSurface)
+                        Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = stringResource(R.string.help), tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

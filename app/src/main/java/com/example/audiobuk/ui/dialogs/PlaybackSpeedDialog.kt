@@ -11,9 +11,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.example.audiobuk.R
 
 @Composable
 fun PlaybackSpeedDialog(
@@ -32,7 +34,7 @@ fun PlaybackSpeedDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Playback Speed",
+                    text = stringResource(R.string.playback_speed),
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
@@ -56,7 +58,7 @@ fun PlaybackSpeedDialog(
                     onClick = onDismiss,
                     modifier = Modifier.align(Alignment.End)
                 ) {
-                    Text("Done")
+                    Text(stringResource(R.string.done))
                 }
             }
         }

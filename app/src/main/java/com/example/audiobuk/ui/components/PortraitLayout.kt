@@ -12,11 +12,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.audiobuk.R
 import com.example.audiobuk.util.formatTime
 
 @Composable
@@ -77,7 +79,7 @@ fun PortraitLayout(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = currentTrack?.artist ?: "Unknown Book",
+                text = currentTrack?.artist ?: stringResource(R.string.unknown_book),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -86,7 +88,7 @@ fun PortraitLayout(
                 textAlign = TextAlign.Center
             )
             Text(
-                text = currentTrack?.title ?: "No Chapter Selected",
+                text = currentTrack?.title ?: stringResource(R.string.no_chapter_selected),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
@@ -96,7 +98,7 @@ fun PortraitLayout(
         }
 
         Text(
-            text = "Chapter ends in: ${formatTime(remainingInChapter)}",
+            text = stringResource(R.string.chapter_ends_in, formatTime(remainingInChapter)),
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold,
@@ -152,7 +154,7 @@ fun PortraitLayout(
         ) {
             Icon(Icons.AutoMirrored.Filled.FormatListBulleted, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Browse chapters", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+            Text(stringResource(R.string.browse_chapters), color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
         }
     }
 }

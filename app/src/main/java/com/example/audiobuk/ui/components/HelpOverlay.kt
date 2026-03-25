@@ -17,10 +17,12 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.audiobuk.R
 import com.example.audiobuk.ui.theme.MidnightGreen
 
 enum class HelpTarget {
@@ -137,13 +139,13 @@ fun HelpOverlay(
                     Spacer(modifier = Modifier.height(20.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         TextButton(onClick = onDismiss) {
-                            Text("SKIP", color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.skip), color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
                         }
                         Button(
                             onClick = onNext,
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
-                            Text(if (stepIndex == totalSteps - 1) "FINISH" else "NEXT", fontWeight = FontWeight.ExtraBold)
+                            Text(if (stepIndex == totalSteps - 1) stringResource(R.string.finish) else stringResource(R.string.next_step), fontWeight = FontWeight.ExtraBold)
                         }
                     }
                 }
