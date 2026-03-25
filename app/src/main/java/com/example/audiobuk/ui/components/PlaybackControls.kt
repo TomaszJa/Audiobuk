@@ -31,9 +31,9 @@ fun PlaybackControls(
     onRewind: () -> Unit,
     onForward: () -> Unit,
     onTogglePlayPause: () -> Unit,
+    modifier: Modifier = Modifier,
     iconSize: Dp = 44.dp,
-    playSize: Dp = 80.dp,
-    modifier: Modifier = Modifier
+    playSize: Dp = 80.dp
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
