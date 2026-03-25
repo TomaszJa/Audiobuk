@@ -10,7 +10,8 @@ data class PlaylistEntity(
     @PrimaryKey val uri: String,
     val name: String,
     val lastPlayedAudioUri: String? = null,
-    val lastPositionMs: Long = 0L
+    val lastPositionMs: Long = 0L,
+    val lastPlayedTimestamp: Long = 0L
 )
 
 @Entity(tableName = "audio_files")

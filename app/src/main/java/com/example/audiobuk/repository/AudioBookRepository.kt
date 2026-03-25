@@ -114,8 +114,22 @@ class AudioBookRepository(private val context: Context) {
         if (playlist != null) {
             musicDao.updatePlaylist(playlist.copy(
                 lastPlayedAudioUri = audioUri.toString(),
-                lastPositionMs = positionMs
+                lastPositionMs = positionMs,
+                lastPlayedTimestamp = System.currentTimeMillis()
             ))
+        }
+    }
+    
+    suspend fun getLastPlayedAudioBook(): AudioBook? = withContext(Dispatchers.IO) {
+        musicDao.getLastPlayedPlaylist()?.let { playlistWithFiles ->
+            val entity = playlistWithFiles.playlist
+            AudioBook(
+                uri = Uri.parse(entity.uri),
+                name = entity.name,
+                audioFiles = playlistWithFiles.audioFiles.map { it.toModel() },
+                lastPlayedUri = entity.lastPlayedAudioUri?.let { Uri.parse(it) },
+                lastPositionMs = entity.lastPositionMs
+            )
         }
     }
 
