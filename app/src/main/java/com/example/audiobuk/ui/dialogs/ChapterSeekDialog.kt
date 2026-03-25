@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -45,8 +46,8 @@ fun ChapterSeekDialog(
         shape = RoundedCornerShape(32.dp),
         title = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                Text("Chapter Zoom", style = MaterialTheme.typography.headlineMedium, color = Color.White, fontWeight = FontWeight.ExtraBold)
-                Text(currentTrack?.title ?: "Current Chapter", style = MaterialTheme.typography.titleMedium, color = Color.White.copy(alpha = 0.8f), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(stringResource(R.string.chapter_zoom), style = MaterialTheme.typography.headlineMedium, color = Color.White, fontWeight = FontWeight.ExtraBold)
+                Text(currentTrack?.title ?: stringResource(R.string.current_chapter_placeholder), style = MaterialTheme.typography.titleMedium, color = Color.White.copy(alpha = 0.8f), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         },
         text = {
@@ -64,7 +65,7 @@ fun ChapterSeekDialog(
                     Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(if (isPreciseMode) Icons.Default.GpsFixed else Icons.Default.GpsNotFixed, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(if (isPreciseMode) "PRECISE SEEKING ON" else "Standard Seeking", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(if (isPreciseMode) stringResource(R.string.precise_seeking_on) else stringResource(R.string.standard_seeking), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                 }
 
@@ -114,11 +115,11 @@ fun ChapterSeekDialog(
         },
         confirmButton = {
             Button(onClick = { onSeek(sliderPos); onDismiss() }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onSurface, contentColor = MidnightGreen), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(48.dp)) {
-                Text("APPLY POSITION", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+                Text(stringResource(R.string.apply_position), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("CANCEL", color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.Bold) }
+            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.cancel_uppercase), color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.Bold) }
         }
     )
 }

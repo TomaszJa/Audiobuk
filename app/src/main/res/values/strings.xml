@@ -1,3 +1,71 @@
 <resources>
     <string name="app_name">Audiobuk</string>
+    
+    <!-- Library Screen -->
+    <string name="my_library">My Library</string>
+    <string name="change_root_directory">Change Root Directory</string>
+    <string name="search_audiobooks">Search audiobooks…</string>
+    <string name="clear_search">Clear search</string>
+    <string name="select_root_directory_prompt">Please select a root directory to start.</string>
+    <string name="select_directory">Select Directory</string>
+    <string name="no_audiobooks_found">No audiobooks found.</string>
+
+    <!-- Player Screen -->
+    <string name="playing_now">Playing Now</string>
+    <string name="back">Back</string>
+    <string name="help">Help</string>
+    <string name="previous">Previous</string>
+    <string name="next">Next</string>
+    <string name="rewind_10s">Rewind 10s</string>
+    <string name="forward_30s">Forward 30s</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="undo_prompt">Go back to: %1$s?</string>
+    <string name="precise_seeking">PRECISE SEEKING</string>
+    <string name="precise_seeking_10x">PRECISE SEEKING (10x)</string>
+    <string name="chapter_ends_in">Chapter ends in %1$s</string>
+    <string name="stop_at_chapter_end">Stop at chapter end</string>
+    <string name="sleep_timer_active">Sleep timer: %1$s</string>
+    <string name="ch_end_short">Ch. End</string>
+    <string name="timer_label">Timer</string>
+    <string name="browse_chapters">Browse chapters</string>
+    <string name="unknown_book">Unknown Book</string>
+    <string name="no_chapter_selected">No Chapter Selected</string>
+    <string name="no_chapter">No Chapter</string>
+
+    <!-- Help Steps -->
+    <string name="help_step_precision_seek">Slide your finger UP while dragging the seek bar for 10x more precision!</string>
+    <string name="help_step_chapter_zoom">Long press the seek bar to open Chapter Zoom for high-precision chapter navigation.</string>
+    <string name="help_step_speed">Tap here to change the playback speed (0.5x to 2.0x).</string>
+    <string name="help_step_timer">Set a sleep timer or choose to stop playback at the end of the chapter.</string>
+    <string name="help_step_browse">View and navigate through all chapters in the book.</string>
+    <string name="help_step_controls">Standard playback controls to play, pause, skip, or rewind.</string>
+    <string name="skip">SKIP</string>
+    <string name="finish">FINISH</string>
+    <string name="next_step">NEXT</string>
+
+    <!-- Dialogs -->
+    <string name="playback_speed">Playback Speed</string>
+    <string name="sleep_timer">Sleep Timer</string>
+    <string name="off">Off</string>
+    <string name="minutes_label">%1$d minutes</string>
+    <string name="minutes_unit">Minutes</string>
+    <string name="one_hour">1 hour</string>
+    <string name="end_of_track">End of track</string>
+    <string name="custom_timer">Custom Timer</string>
+    <string name="custom_option">Custom…</string>
+    <string name="stop_at_end_of_chapter">Stop at end of chapter</string>
+    <string name="chapters">Chapters</string>
+    <string name="chapter_zoom">Chapter Zoom</string>
+    <string name="done">Done</string>
+    <string name="cancel">Cancel</string>
+    <string name="set">Set</string>
+    <string name="search_chapters_placeholder">Search chapters…</string>
+    <string name="close">Close</string>
+    <string name="precise_seeking_on">PRECISE SEEKING ON</string>
+    <string name="standard_seeking">Standard Seeking</string>
+    <string name="apply_position">APPLY POSITION</string>
+    <string name="cancel_uppercase">CANCEL</string>
+    <string name="current_chapter_placeholder">Current Chapter</string>
+    <string name="music_note">Music note</string>
 </resources>

@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,7 +43,7 @@ fun ProgressBar(
         ) {
             if (isPrecise) {
                 Text(
-                    "PRECISE SEEKING (10x)",
+                    text = stringResource(R.string.precise_seeking_10x),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.ExtraBold,
@@ -54,7 +55,7 @@ fun ProgressBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(64.dp) // Increased hit area height from 48dp to 64dp
+                .height(64.dp)
         ) {
             Slider(
                 enabled = false,
@@ -82,7 +83,7 @@ fun ProgressBar(
                 track = { sliderState ->
                     SliderDefaults.Track(
                         sliderState = sliderState,
-                        modifier = Modifier.height(8.dp), // Slightly thicker track for better visibility
+                        modifier = Modifier.height(8.dp),
                         thumbTrackGapSize = 0.dp,
                         colors = SliderDefaults.colors(
                             activeTrackColor = MaterialTheme.colorScheme.primary,
@@ -92,7 +93,6 @@ fun ProgressBar(
                 }
             )
             
-            // Gesture overlay
             Spacer(
                 modifier = Modifier
                     .fillMaxSize()
@@ -116,13 +116,8 @@ fun ProgressBar(
                             onDragCancel = { onGestureEnd() },
                             onDrag = { change, dragAmount ->
                                 change.consume()
-                                
-                                // Drag Up = Precise Mode (10x slower)
-                                // Drag Down or on the bar = Normal Mode
-                                // We no longer have a "Stability Zone" that blocks input.
                                 val isPreciseMode = change.position.y < 0
                                 val sensitivity = if (isPreciseMode) 0.1f else 1.0f
-                                
                                 val deltaMs = ((dragAmount.x * sensitivity) / size.width.toFloat()) * totalDuration
                                 onGestureDelta(deltaMs.toLong(), isPreciseMode)
                             }

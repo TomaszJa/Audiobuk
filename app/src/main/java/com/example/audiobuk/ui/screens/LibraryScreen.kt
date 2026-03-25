@@ -38,8 +38,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.example.audiobuk.R
 import com.example.audiobuk.ui.components.PlaybackControlBar
 import com.example.audiobuk.ui.components.PlaylistItem
 import com.example.audiobuk.viewmodel.AudioBookViewModel
@@ -101,11 +103,11 @@ fun LibraryScreen(viewModel: AudioBookViewModel) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "My Library",
+                        text = stringResource(R.string.my_library),
                         style = MaterialTheme.typography.headlineMedium
                     )
                     IconButton(onClick = { dirPickerLauncher.launch(null) }) {
-                        Icon(Icons.Default.Folder, contentDescription = "Change Root Directory")
+                        Icon(Icons.Default.Folder, contentDescription = stringResource(R.string.change_root_directory))
                     }
                 }
 
@@ -116,12 +118,12 @@ fun LibraryScreen(viewModel: AudioBookViewModel) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
-                        placeholder = { Text("Search audiobooks...") },
+                        placeholder = { Text(stringResource(R.string.search_audiobooks)) },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
                                 IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Clear search")
+                                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear_search))
                                 }
                             }
                         },
@@ -137,18 +139,18 @@ fun LibraryScreen(viewModel: AudioBookViewModel) {
                 if (rootUri == null) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Please select a root directory to start.")
+                            Text(stringResource(R.string.select_root_directory_prompt))
                             Button(
                                 onClick = { dirPickerLauncher.launch(null) },
                                 modifier = Modifier.padding(top = 16.dp)
                             ) {
-                                Text("Select Directory")
+                                Text(stringResource(R.string.select_directory))
                             }
                         }
                     }
                 } else if (playlists.isEmpty() && searchQuery.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("No audiobooks found.")
+                        Text(stringResource(R.string.no_audiobooks_found))
                     }
                 } else {
                     val columns = if (configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) 4 else 2

@@ -11,8 +11,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.audiobuk.R
 import com.example.audiobuk.util.formatTimerRemaining
 
 @Composable
@@ -41,7 +43,7 @@ fun SettingsRow(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
             ) {
-                Icon(Icons.Default.Speed, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                Icon(Icons.Default.Speed, contentDescription = stringResource(R.string.playback_speed), modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "${"%.1f".format(playbackSpeed)}x",
@@ -68,16 +70,16 @@ fun SettingsRow(
             ) {
                 Icon(
                     Icons.Default.Timer, 
-                    contentDescription = null, 
+                    contentDescription = stringResource(R.string.sleep_timer), 
                     modifier = Modifier.size(20.dp), 
                     tint = if (sleepTimerRemaining != null || stopAfterCurrentTrack) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSecondaryContainer
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = when {
-                        stopAfterCurrentTrack -> "Ch. End"
+                        stopAfterCurrentTrack -> stringResource(R.string.ch_end_short)
                         sleepTimerRemaining != null -> formatTimerRemaining(sleepTimerRemaining)
-                        else -> "Timer"
+                        else -> stringResource(R.string.timer_label)
                     },
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.ExtraBold,
