@@ -74,7 +74,7 @@ fun PlaybackControlBar(
             
             Column(modifier = Modifier.weight(1f).padding(horizontal = 16.dp)) {
                 Text(
-                    text = track.title,
+                    text = track.artist, // Swapped: Book title on top
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
@@ -83,7 +83,7 @@ fun PlaybackControlBar(
                     fontSize = 18.sp
                 )
                 Text(
-                    text = track.artist,
+                    text = track.title, // Swapped: Chapter title below and smaller
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
