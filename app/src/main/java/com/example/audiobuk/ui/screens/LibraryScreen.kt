@@ -12,13 +12,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -56,6 +61,7 @@ fun LibraryScreen(viewModel: AudioBookViewModel) {
     val isPlaying by viewModel.isPlaying.collectAsState()
     val currentTrack by viewModel.currentTrack.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val isGridView by viewModel.isGridView.collectAsState()
     val configuration = LocalConfiguration.current
 
     val dirPickerLauncher = rememberLauncherForActivityResult(
@@ -106,8 +112,19 @@ fun LibraryScreen(viewModel: AudioBookViewModel) {
                         text = stringResource(R.string.my_library),
                         style = MaterialTheme.typography.headlineMedium
                     )
-                    IconButton(onClick = { dirPickerLauncher.launch(null) }) {
-                        Icon(Icons.Default.Folder, contentDescription = stringResource(R.string.change_root_directory))
+                    Row {
+                        IconButton(onClick = { viewModel.toggleSortOrder() }) {
+                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.sort_order))
+                        }
+                        IconButton(onClick = { viewModel.toggleViewMode() }) {
+                            Icon(
+                                if (isGridView) Icons.Default.ViewList else Icons.Default.GridView,
+                                contentDescription = stringResource(R.string.toggle_view_mode)
+                            )
+                        }
+                        IconButton(onClick = { dirPickerLauncher.launch(null) }) {
+                            Icon(Icons.Default.Folder, contentDescription = stringResource(R.string.change_root_directory))
+                        }
                     }
                 }
 
@@ -153,15 +170,28 @@ fun LibraryScreen(viewModel: AudioBookViewModel) {
                         Text(stringResource(R.string.no_audiobooks_found))
                     }
                 } else {
-                    val columns = if (configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) 4 else 2
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(columns),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)
-                    ) {
-                        items(playlists) { playlist ->
-                            PlaylistItem(audioBook = playlist) {
-                                viewModel.playPlaylist(playlist)
+                    if (isGridView) {
+                        val columns = if (configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) 4 else 2
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(columns),
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)
+                        ) {
+                            items(playlists) { playlist ->
+                                PlaylistItem(audioBook = playlist, isGrid = true) {
+                                    viewModel.playPlaylist(playlist)
+                                }
+                            }
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)
+                        ) {
+                            items(playlists) { playlist ->
+                                PlaylistItem(audioBook = playlist, isGrid = false) {
+                                    viewModel.playPlaylist(playlist)
+                                }
                             }
                         }
                     }
