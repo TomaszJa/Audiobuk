@@ -26,7 +26,8 @@ import com.example.audiobuk.R
 import com.example.audiobuk.ui.theme.MidnightGreen
 
 enum class HelpTarget {
-    PRECISION_SEEK, CHAPTER_ZOOM, SPEED, TIMER, BROWSE, CONTROLS
+    PRECISION_SEEK, CHAPTER_ZOOM, SPEED, TIMER, BROWSE, CONTROLS,
+    LIB_FILTER, LIB_SORT, LIB_VIEW, LIB_ROOT, LIB_SEARCH, LIB_PLAYBACK_BAR
 }
 
 data class HelpStep(
@@ -69,15 +70,16 @@ fun HelpOverlay(
                 val arrowColor = Color(0xFF4CAF50) // Forest Green
                 val arrowX = position.x + size.width / 2
                 
-                // If it's the PRECISION_SEEK step, we point UP from the bar
-                val isPrecisionSeek = step.target == HelpTarget.PRECISION_SEEK
+                // If the target is at the bottom (like PlaybackBar), point UP
+                // or if it's the PRECISION_SEEK step
+                val pointUp = step.target == HelpTarget.PRECISION_SEEK || step.target == HelpTarget.LIB_PLAYBACK_BAR
                 
                 val startY: Float
                 val endY: Float
                 val wingTipY: Float
                 
-                if (isPrecisionSeek) {
-                    // Arrow pointing UP from the bar
+                if (pointUp) {
+                    // Arrow pointing UP from the element
                     startY = position.y - 10f - arrowOffset
                     endY = position.y - 70f - arrowOffset
                     wingTipY = endY + 20f // Wings below tip
