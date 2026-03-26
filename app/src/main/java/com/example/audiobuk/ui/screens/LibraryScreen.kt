@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ViewList
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -65,6 +67,7 @@ fun LibraryScreen(viewModel: AudioBookViewModel) {
     val currentTrack by viewModel.currentTrack.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val isGridView by viewModel.isGridView.collectAsState()
+    val hideFinished by viewModel.hideFinished.collectAsState()
     val configuration = LocalConfiguration.current
 
     val dirPickerLauncher = rememberLauncherForActivityResult(
@@ -116,6 +119,12 @@ fun LibraryScreen(viewModel: AudioBookViewModel) {
                         style = MaterialTheme.typography.headlineMedium
                     )
                     Row {
+                        IconButton(onClick = { viewModel.toggleHideFinished() }) {
+                            Icon(
+                                imageVector = if (hideFinished) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (hideFinished) stringResource(R.string.show_finished) else stringResource(R.string.hide_finished)
+                            )
+                        }
                         IconButton(onClick = { viewModel.toggleSortOrder() }) {
                             Icon(
                                 imageVector = if (sortOrder == SortOrder.ASCENDING) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
@@ -184,7 +193,11 @@ fun LibraryScreen(viewModel: AudioBookViewModel) {
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)
                         ) {
                             items(playlists) { playlist ->
-                                PlaylistItem(audioBook = playlist, isGrid = true) {
+                                PlaylistItem(
+                                    audioBook = playlist,
+                                    progress = viewModel.getProgress(playlist),
+                                    isGrid = true
+                                ) {
                                     viewModel.playPlaylist(playlist)
                                 }
                             }
@@ -195,7 +208,11 @@ fun LibraryScreen(viewModel: AudioBookViewModel) {
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)
                         ) {
                             items(playlists) { playlist ->
-                                PlaylistItem(audioBook = playlist, isGrid = false) {
+                                PlaylistItem(
+                                    audioBook = playlist,
+                                    progress = viewModel.getProgress(playlist),
+                                    isGrid = false
+                                ) {
                                     viewModel.playPlaylist(playlist)
                                 }
                             }

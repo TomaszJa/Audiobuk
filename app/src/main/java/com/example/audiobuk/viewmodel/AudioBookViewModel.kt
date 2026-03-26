@@ -34,11 +34,20 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
     private val _isGridView = MutableStateFlow(prefs.getBoolean("is_grid_view", true))
     val isGridView: StateFlow<Boolean> = _isGridView
 
-    val filteredPlaylists: StateFlow<List<AudioBook>> = combine(_playlists, _searchQuery, _sortOrder) { playlists, query, sort ->
-        val filtered = if (query.isEmpty()) {
+    private val _hideFinished = MutableStateFlow(prefs.getBoolean("hide_finished", false))
+    val hideFinished: StateFlow<Boolean> = _hideFinished
+
+    val filteredPlaylists: StateFlow<List<AudioBook>> = combine(
+        _playlists, _searchQuery, _sortOrder, _hideFinished
+    ) { playlists, query, sort, hideFinished ->
+        var filtered = if (query.isEmpty()) {
             playlists
         } else {
             playlists.filter { it.name.contains(query, ignoreCase = true) }
+        }
+        
+        if (hideFinished) {
+            filtered = filtered.filter { getProgress(it) < 100 }
         }
         
         when (sort) {
@@ -146,6 +155,11 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
         prefs.edit().putBoolean("is_grid_view", _isGridView.value).apply()
     }
 
+    fun toggleHideFinished() {
+        _hideFinished.value = !_hideFinished.value
+        prefs.edit().putBoolean("hide_finished", _hideFinished.value).apply()
+    }
+
     fun setRootUri(uri: Uri) {
         getApplication<Application>().contentResolver.takePersistableUriPermission(
             uri,
@@ -249,6 +263,26 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
         } else {
             player.setSleepTimer(minutes)
         }
+    }
+
+    fun getProgress(audioBook: AudioBook): Int {
+        val totalDuration = audioBook.audioFiles.sumOf { it.duration }
+        if (totalDuration == 0L) return 0
+        
+        val precedingDuration = if (audioBook.lastPlayedTrackId != null) {
+            audioBook.audioFiles
+                .takeWhile { it.id != audioBook.lastPlayedTrackId }
+                .sumOf { it.duration }
+        } else if (audioBook.lastPlayedUri != null) {
+            audioBook.audioFiles
+                .takeWhile { it.uri != audioBook.lastPlayedUri }
+                .sumOf { it.duration }
+        } else {
+            0L
+        }
+        
+        val currentPosition = precedingDuration + audioBook.lastPositionMs
+        return ((currentPosition * 100) / totalDuration).toInt().coerceIn(0, 100)
     }
 
     override fun onCleared() {
