@@ -18,7 +18,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.GridView
@@ -50,6 +51,7 @@ import com.example.audiobuk.R
 import com.example.audiobuk.ui.components.PlaybackControlBar
 import com.example.audiobuk.ui.components.PlaylistItem
 import com.example.audiobuk.viewmodel.AudioBookViewModel
+import com.example.audiobuk.viewmodel.SortOrder
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,6 +59,7 @@ fun LibraryScreen(viewModel: AudioBookViewModel) {
     val context = LocalContext.current
     val playlists by viewModel.filteredPlaylists.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val sortOrder by viewModel.sortOrder.collectAsState()
     val rootUri by viewModel.rootUri.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
     val currentTrack by viewModel.currentTrack.collectAsState()
@@ -114,7 +117,10 @@ fun LibraryScreen(viewModel: AudioBookViewModel) {
                     )
                     Row {
                         IconButton(onClick = { viewModel.toggleSortOrder() }) {
-                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.sort_order))
+                            Icon(
+                                imageVector = if (sortOrder == SortOrder.ASCENDING) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                                contentDescription = stringResource(R.string.sort_order)
+                            )
                         }
                         IconButton(onClick = { viewModel.toggleViewMode() }) {
                             Icon(
