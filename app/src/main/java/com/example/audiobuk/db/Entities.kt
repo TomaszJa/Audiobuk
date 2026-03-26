@@ -11,17 +11,20 @@ data class PlaylistEntity(
     val name: String,
     val lastPlayedAudioUri: String? = null,
     val lastPositionMs: Long = 0L,
-    val lastPlayedTimestamp: Long = 0L
+    val lastPlayedTimestamp: Long = 0L,
+    val lastPlayedTrackId: String? = null // New field to uniquely identify chapter
 )
 
 @Entity(tableName = "audio_files")
 data class AudioFileEntity(
-    @PrimaryKey val uri: String,
+    @PrimaryKey val id: String, // Changed to String to use composite ID (uri + offset)
+    val uri: String,
     val playlistUri: String,
     val displayName: String,
     val artist: String,
     val title: String,
-    val duration: Long
+    val duration: Long,
+    val startOffsetMs: Long = 0L
 )
 
 data class PlaylistWithAudioFiles(

@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import androidx.annotation.OptIn
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackParameters
@@ -21,7 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 @OptIn(UnstableApi::class)
-class AudioPlayer(context: Context, private val onProgressUpdate: (Uri, Long) -> Unit) {
+class AudioPlayer(context: Context, private val onProgressUpdate: (String, Uri, Long) -> Unit) {
     private var controllerFuture: ListenableFuture<MediaController>
     private var mediaController: MediaController? = null
     private val scope = CoroutineScope(Dispatchers.Main + Job())
@@ -61,7 +62,6 @@ class AudioPlayer(context: Context, private val onProgressUpdate: (Uri, Long) ->
 
                 controller.addListener(object : Player.Listener {
                     override fun onEvents(player: Player, events: Player.Events) {
-                        // Refresh extras on any event as a backup
                         val extras = controller.sessionExtras
                         _sleepTimerRemaining.value = extras.getLong(PlaybackService.EXTRA_SLEEP_TIMER_REMAINING, 0L).takeIf { it > 0 }
                         _stopAfterCurrentTrack.value = extras.getBoolean(PlaybackService.EXTRA_STOP_CHAPTER, false)
@@ -75,7 +75,6 @@ class AudioPlayer(context: Context, private val onProgressUpdate: (Uri, Long) ->
                     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                         saveCurrentState()
                         updateCurrentTrack(mediaItem)
-                        _duration.value = controller.duration.coerceAtLeast(0L)
                     }
 
                     override fun onPlaybackStateChanged(playbackState: Int) {
@@ -93,9 +92,6 @@ class AudioPlayer(context: Context, private val onProgressUpdate: (Uri, Long) ->
                     while (isActive) {
                         mediaController?.let { ctrl ->
                             _currentPosition.value = ctrl.currentPosition
-                            
-                            // Proactively sync session extras in the loop because Media3 1.5.1 
-                            // doesn't fire events for extras updates alone.
                             val extras = ctrl.sessionExtras
                             val remaining = extras.getLong(PlaybackService.EXTRA_SLEEP_TIMER_REMAINING, 0L)
                             _sleepTimerRemaining.value = if (remaining > 0) remaining else null
@@ -123,50 +119,62 @@ class AudioPlayer(context: Context, private val onProgressUpdate: (Uri, Long) ->
 
     private fun saveCurrentState() {
         val controller = mediaController ?: return
-        val currentUri = controller.currentMediaItem?.localConfiguration?.uri ?: return
-        onProgressUpdate(currentUri, controller.currentPosition)
+        val mediaItem = controller.currentMediaItem ?: return
+        val currentUri = mediaItem.localConfiguration?.uri ?: return
+        onProgressUpdate(mediaItem.mediaId, currentUri, controller.currentPosition)
     }
 
     private fun updateCurrentTrack(mediaItem: MediaItem?) {
         if (mediaItem == null) {
             _currentTrack.value = null
+            _duration.value = 0
             return
         }
         val metadata = mediaItem.mediaMetadata
+        
+        // Use clipping configuration to determine duration if available
+        var duration = mediaItem.clippingConfiguration.endPositionMs
+        if (duration == C.TIME_END_OF_SOURCE) {
+            duration = mediaController?.duration ?: 0L
+        } else {
+            duration -= mediaItem.clippingConfiguration.startPositionMs
+        }
+
         _currentTrack.value = AudioFile(
-            id = mediaIdToLong(mediaItem.mediaId),
+            id = mediaItem.mediaId,
             uri = mediaItem.localConfiguration?.uri ?: Uri.EMPTY,
             displayName = metadata.title?.toString() ?: "",
             artist = metadata.artist?.toString() ?: "Unknown",
-            duration = 0,
-            title = metadata.title?.toString() ?: "Unknown"
+            duration = duration,
+            title = metadata.title?.toString() ?: "Unknown",
+            startOffsetMs = mediaItem.clippingConfiguration.startPositionMs
         )
+        _duration.value = duration.coerceAtLeast(0L)
     }
 
-    private fun mediaIdToLong(mediaId: String): Long {
-        return try {
-            mediaId.toLong()
-        } catch (_: NumberFormatException) {
-            -1L
-        }
-    }
-
-    fun playPlaylist(audioFiles: List<AudioFile>, startUri: Uri? = null, startPositionMs: Long = 0L) {
+    fun playPlaylist(audioFiles: List<AudioFile>, startTrackId: String? = null, startPositionMs: Long = 0L) {
         val mediaItems = audioFiles.map { audioFile ->
             val metadata = MediaMetadata.Builder()
                 .setTitle(audioFile.title)
                 .setArtist(audioFile.artist)
                 .build()
+            
+            val clippingConfiguration = MediaItem.ClippingConfiguration.Builder()
+                .setStartPositionMs(audioFile.startOffsetMs)
+                .setEndPositionMs(if (audioFile.duration > 0) audioFile.startOffsetMs + audioFile.duration else C.TIME_END_OF_SOURCE)
+                .build()
+
             MediaItem.Builder()
                 .setUri(audioFile.uri)
-                .setMediaId(audioFile.id.toString())
+                .setMediaId(audioFile.id)
                 .setMediaMetadata(metadata)
+                .setClippingConfiguration(clippingConfiguration)
                 .build()
         }
         mediaController?.apply {
             setMediaItems(mediaItems)
-            val startIndex = if (startUri != null) {
-                audioFiles.indexOfFirst { it.uri == startUri }.takeIf { it != -1 } ?: 0
+            val startIndex = if (startTrackId != null) {
+                audioFiles.indexOfFirst { it.id == startTrackId }.takeIf { it != -1 } ?: 0
             } else 0
             seekTo(startIndex, startPositionMs)
             prepare()
@@ -174,10 +182,10 @@ class AudioPlayer(context: Context, private val onProgressUpdate: (Uri, Long) ->
         }
     }
 
-    fun playTrack(uri: Uri) {
+    fun playTrack(trackId: String) {
         mediaController?.let { controller ->
             for (i in 0 until controller.mediaItemCount) {
-                if (controller.getMediaItemAt(i).localConfiguration?.uri == uri) {
+                if (controller.getMediaItemAt(i).mediaId == trackId) {
                     controller.seekTo(i, 0)
                     controller.play()
                     break

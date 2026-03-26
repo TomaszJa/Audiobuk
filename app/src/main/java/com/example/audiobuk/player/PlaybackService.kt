@@ -18,6 +18,8 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.example.audiobuk.MainActivity
+import com.example.audiobuk.model.AudioBook
+import com.example.audiobuk.model.AudioFile
 import com.example.audiobuk.repository.AudioBookRepository
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -144,13 +146,23 @@ class PlaybackService : MediaLibraryService() {
                                 .setTitle(audioFile.title)
                                 .setArtist(audioFile.artist)
                                 .build()
+                            
+                            val clippingConfiguration = MediaItem.ClippingConfiguration.Builder()
+                                .setStartPositionMs(audioFile.startOffsetMs)
+                                .setEndPositionMs(if (audioFile.duration > 0) audioFile.startOffsetMs + audioFile.duration else C.TIME_END_OF_SOURCE)
+                                .build()
+
                             MediaItem.Builder()
                                 .setUri(audioFile.uri)
-                                .setMediaId(audioFile.id.toString())
+                                .setMediaId(audioFile.id)
                                 .setMediaMetadata(metadata)
+                                .setClippingConfiguration(clippingConfiguration)
                                 .build()
                         }
-                        val startIndex = if (lastBook.lastPlayedUri != null) {
+                        
+                        val startIndex = if (lastBook.lastPlayedTrackId != null) {
+                            lastBook.audioFiles.indexOfFirst { it.id == lastBook.lastPlayedTrackId }.takeIf { it != -1 } ?: 0
+                        } else if (lastBook.lastPlayedUri != null) {
                             lastBook.audioFiles.indexOfFirst { it.uri == lastBook.lastPlayedUri }.takeIf { it != -1 } ?: 0
                         } else 0
                         
