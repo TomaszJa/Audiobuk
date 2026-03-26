@@ -7,5 +7,6 @@ data class AudioBook(
     val name: String,
     val audioFiles: List<AudioFile>,
     val lastPlayedUri: Uri? = null,
+    val lastPlayedTrackId: String? = null,
     val lastPositionMs: Long = 0L
 )

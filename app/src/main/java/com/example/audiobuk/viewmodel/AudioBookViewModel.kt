@@ -42,8 +42,8 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
     private val _currentAudioBook = MutableStateFlow<AudioBook?>(null)
     val currentAudioBook: StateFlow<AudioBook?> = _currentAudioBook
 
-    private val player = AudioPlayer(application) { uri, position ->
-        savePlaybackProgress(uri, position)
+    private val player = AudioPlayer(application) { trackId, uri, position ->
+        savePlaybackProgress(trackId, uri, position)
     }
     
     val isPlaying = player.isPlaying
@@ -62,7 +62,7 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
     val globalPosition: StateFlow<Long> = combine(currentTrack, currentPosition, _currentAudioBook) { track, pos, book ->
         if (track == null || book == null) return@combine 0L
         val precedingDuration = book.audioFiles
-            .takeWhile { it.uri != track.uri }
+            .takeWhile { it.id != track.id }
             .sumOf { it.duration }
         precedingDuration + pos
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
@@ -85,8 +85,8 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
             while (true) {
                 delay(10000)
                 if (isPlaying.value) {
-                    currentTrack.value?.uri?.let { uri ->
-                        savePlaybackProgress(uri, currentPosition.value)
+                    currentTrack.value?.let { track ->
+                        savePlaybackProgress(track.id, track.uri, currentPosition.value)
                     }
                 }
             }
@@ -97,20 +97,20 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             repository.getPlaylistsFlow().collectLatest {
                 _playlists.value = it
-                val currentTrackUri = player.currentTrack.value?.uri
-                if (currentTrackUri != null) {
-                    _currentAudioBook.value = it.find { p -> p.audioFiles.any { f -> f.uri == currentTrackUri } }
+                val currentTrackId = player.currentTrack.value?.id
+                if (currentTrackId != null) {
+                    _currentAudioBook.value = it.find { p -> p.audioFiles.any { f -> f.id == currentTrackId } }
                 }
             }
         }
     }
 
-    private fun savePlaybackProgress(uri: Uri, position: Long) {
+    private fun savePlaybackProgress(trackId: String, uri: Uri, position: Long) {
         viewModelScope.launch {
             _playlists.value.find { playlist -> 
-                playlist.audioFiles.any { it.uri == uri }
+                playlist.audioFiles.any { it.id == trackId }
             }?.let { playlist ->
-                repository.updatePlaybackState(playlist.uri, uri, position)
+                repository.updatePlaybackState(playlist.uri, trackId, uri, position)
             }
         }
     }
@@ -146,13 +146,13 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun playPlaylist(audioBook: AudioBook) {
-        val currentUri = currentTrack.value?.uri
-        val isAlreadyPlayingThisPlaylist = audioBook.audioFiles.any { it.uri == currentUri }
+        val currentTrackId = currentTrack.value?.id
+        val isAlreadyPlayingThisPlaylist = audioBook.audioFiles.any { it.id == currentTrackId }
 
         if (!isAlreadyPlayingThisPlaylist) {
             player.playPlaylist(
                 audioFiles = audioBook.audioFiles,
-                startUri = audioBook.lastPlayedUri,
+                startTrackId = audioBook.lastPlayedTrackId ?: audioBook.audioFiles.find { it.uri == audioBook.lastPlayedUri }?.id,
                 startPositionMs = audioBook.lastPositionMs
             )
             _currentAudioBook.value = audioBook
@@ -163,7 +163,7 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun playTrack(track: AudioFile) {
-        player.playTrack(track.uri)
+        player.playTrack(track.id)
     }
 
     fun togglePlayPause() {

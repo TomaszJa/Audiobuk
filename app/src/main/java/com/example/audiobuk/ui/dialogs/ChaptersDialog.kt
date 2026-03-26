@@ -1,6 +1,5 @@
 package com.example.audiobuk.ui.dialogs
 
-import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -30,16 +29,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.audiobuk.R
 import com.example.audiobuk.model.AudioFile
 
 @Composable
 fun ChaptersDialog(
     chapters: List<AudioFile>,
-    currentTrackUri: Uri?,
+    currentTrackId: String?,
     onSelect: (AudioFile) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -62,7 +63,7 @@ fun ChaptersDialog(
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
                 Text(
-                    text = "Chapters",
+                    text = stringResource(R.string.chapters),
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
@@ -71,12 +72,12 @@ fun ChaptersDialog(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Search chapters...") },
+                    placeholder = { Text(stringResource(R.string.search_chapters_placeholder)) },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Default.Close, contentDescription = "Clear search")
+                                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear_search))
                             }
                         }
                     },
@@ -88,7 +89,7 @@ fun ChaptersDialog(
 
                 LazyColumn(modifier = Modifier.weight(1f)) {
                     items(filteredChapters) { track ->
-                        val isCurrent = track.uri == currentTrackUri
+                        val isCurrent = track.id == currentTrackId
                         ListItem(
                             headlineContent = { 
                                 Text(
@@ -111,7 +112,7 @@ fun ChaptersDialog(
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) {
-                        Text("Close")
+                        Text(stringResource(R.string.close))
                     }
                 }
             }

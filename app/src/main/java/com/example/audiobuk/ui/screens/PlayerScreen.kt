@@ -108,7 +108,7 @@ fun PlayerScreen(viewModel: AudioBookViewModel, onBack: () -> Unit) {
     if (showChaptersDialog) {
         ChaptersDialog(
             chapters = currentPlaylist?.audioFiles ?: emptyList(),
-            currentTrackUri = currentTrack?.uri,
+            currentTrackId = currentTrack?.id,
             onSelect = { 
                 viewModel.playTrack(it)
                 showChaptersDialog = false
