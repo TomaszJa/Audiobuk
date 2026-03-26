@@ -9,6 +9,9 @@
     <string name="select_root_directory_prompt">Please select a root directory to start.</string>
     <string name="select_directory">Select Directory</string>
     <string name="no_audiobooks_found">No audiobooks found.</string>
+    <string name="toggle_view_mode">Toggle view mode</string>
+    <string name="sort_order">Sort order</string>
+    <string name="tracks_count">%1$d tracks</string>
 
     <!-- Player Screen -->
     <string name="playing_now">Playing Now</string>

@@ -102,7 +102,7 @@ fun ChaptersDialog(
                             leadingContent = {
                                 Icon(
                                     Icons.Default.MusicNote,
-                                    contentDescription = null,
+                                    contentDescription = stringResource(R.string.music_note),
                                     tint = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }

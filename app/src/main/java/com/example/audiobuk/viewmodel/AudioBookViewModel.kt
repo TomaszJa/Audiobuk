@@ -13,6 +13,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
+enum class SortOrder {
+    ASCENDING, DESCENDING
+}
+
 class AudioBookViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AudioBookRepository(application)
     private val prefs = application.getSharedPreferences("audiobuk_prefs", Context.MODE_PRIVATE)
@@ -22,11 +26,24 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
 
-    val filteredPlaylists: StateFlow<List<AudioBook>> = combine(_playlists, _searchQuery) { playlists, query ->
-        if (query.isEmpty()) {
+    private val _sortOrder = MutableStateFlow(
+        SortOrder.valueOf(prefs.getString("sort_order", SortOrder.ASCENDING.name) ?: SortOrder.ASCENDING.name)
+    )
+    val sortOrder: StateFlow<SortOrder> = _sortOrder
+
+    private val _isGridView = MutableStateFlow(prefs.getBoolean("is_grid_view", true))
+    val isGridView: StateFlow<Boolean> = _isGridView
+
+    val filteredPlaylists: StateFlow<List<AudioBook>> = combine(_playlists, _searchQuery, _sortOrder) { playlists, query, sort ->
+        val filtered = if (query.isEmpty()) {
             playlists
         } else {
             playlists.filter { it.name.contains(query, ignoreCase = true) }
+        }
+        
+        when (sort) {
+            SortOrder.ASCENDING -> filtered.sortedBy { it.name.lowercase() }
+            SortOrder.DESCENDING -> filtered.sortedByDescending { it.name.lowercase() }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -117,6 +134,16 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
+    }
+
+    fun toggleSortOrder() {
+        _sortOrder.value = if (_sortOrder.value == SortOrder.ASCENDING) SortOrder.DESCENDING else SortOrder.ASCENDING
+        prefs.edit().putString("sort_order", _sortOrder.value.name).apply()
+    }
+
+    fun toggleViewMode() {
+        _isGridView.value = !_isGridView.value
+        prefs.edit().putBoolean("is_grid_view", _isGridView.value).apply()
     }
 
     fun setRootUri(uri: Uri) {
