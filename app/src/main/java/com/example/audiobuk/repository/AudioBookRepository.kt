@@ -54,77 +54,99 @@ class AudioBookRepository(private val context: Context) {
         val rootDoc = DocumentFile.fromTreeUri(context, rootUri) ?: return@withContext
         val existingPlaylistUris = musicDao.getAllPlaylistUris().toSet()
         
-        val currentSubDirs = rootDoc.listFiles().filter { it.isDirectory }
-        val currentSubDirUris = currentSubDirs.map { it.uri.toString() }.toSet()
+        val items = rootDoc.listFiles()
+        // Consider both directories and individual audio files in the root as potential audiobooks
+        val currentItems = items.filter { it.isDirectory || isAudioFile(it.name) }
+        val currentItemUris = currentItems.map { it.uri.toString() }.toSet()
 
-        // 1. Remove missing playlists
+        // 1. Remove missing playlists (where the URI is the item URI)
         existingPlaylistUris.forEach { uri ->
-            if (!currentSubDirUris.contains(uri)) {
+            if (!currentItemUris.contains(uri)) {
                 musicDao.deletePlaylistCompletely(uri)
             }
         }
 
-        // 2. Add or Update playlists
-        currentSubDirs.forEach { subDir ->
-            val subDirUri = subDir.uri.toString()
-            val subDirName = subDir.name ?: "Unknown"
+        // 2. Add or Update items
+        currentItems.forEach { item ->
+            val itemUri = item.uri.toString()
+            val audioFilesToInsert = mutableListOf<AudioFileEntity>()
+            val playlistName: String
             
-            val existingFiles = if (existingPlaylistUris.contains(subDirUri)) {
-                musicDao.getAudioFilesForPlaylist(subDirUri).groupBy { it.uri }
+            val existingFiles = if (existingPlaylistUris.contains(itemUri)) {
+                musicDao.getAudioFilesForPlaylist(itemUri).groupBy { it.uri }
             } else {
                 emptyMap()
             }
 
-            val audioFilesToInsert = mutableListOf<AudioFileEntity>()
-            
-            subDir.listFiles().forEach { file ->
-                if (file.isFile && isAudioFile(file.name)) {
-                    val fileUri = file.uri.toString()
-                    val existingEntries = existingFiles[fileUri]
-                    
-                    if (existingEntries == null) {
-                        val chapters = extractChapters(file)
-                        if (chapters.isEmpty()) {
-                            // Single file track
-                            val duration = getDuration(file.uri)
-                            audioFilesToInsert.add(AudioFileEntity(
-                                id = fileUri,
-                                uri = fileUri,
-                                playlistUri = subDirUri,
-                                displayName = file.name ?: "Unknown",
-                                artist = subDirName,
-                                title = file.name?.substringBeforeLast(".") ?: "Unknown",
-                                duration = duration,
-                                startOffsetMs = 0L
-                            ))
-                        } else {
-                            // Multiple chapters from one file
-                            chapters.forEach { chapter ->
-                                audioFilesToInsert.add(AudioFileEntity(
-                                    id = "${fileUri}_${chapter.startOffsetMs}",
-                                    uri = fileUri,
-                                    playlistUri = subDirUri,
-                                    displayName = chapter.title,
-                                    artist = subDirName,
-                                    title = chapter.title,
-                                    duration = chapter.duration,
-                                    startOffsetMs = chapter.startOffsetMs
-                                ))
-                            }
-                        }
+            if (item.isDirectory) {
+                // Audiobook is a folder containing multiple files
+                playlistName = item.name ?: "Unknown"
+                item.listFiles().forEach { file ->
+                    if (file.isFile && isAudioFile(file.name)) {
+                        processFile(file, itemUri, playlistName, existingFiles, audioFilesToInsert)
                     }
                 }
+            } else {
+                // Audiobook is a single file in the root directory
+                val metadata = getBasicMetadata(item.uri)
+                playlistName = metadata.title ?: item.name?.substringBeforeLast(".") ?: "Unknown"
+                processFile(item, itemUri, playlistName, existingFiles, audioFilesToInsert)
             }
             
-            if (!existingPlaylistUris.contains(subDirUri)) {
+            if (!existingPlaylistUris.contains(itemUri)) {
                 if (audioFilesToInsert.isNotEmpty()) {
                     musicDao.refreshLibrary(
-                        listOf(PlaylistEntity(uri = subDirUri, name = subDirName)),
+                        listOf(PlaylistEntity(uri = itemUri, name = playlistName)),
                         audioFilesToInsert
                     )
                 }
             } else if (audioFilesToInsert.isNotEmpty()) {
+                // If it's an existing audiobook, we only insert files that aren't already there 
+                // (processFile handles the 'is already in DB' check via existingFiles)
                 musicDao.insertAudioFiles(audioFilesToInsert)
+            }
+        }
+    }
+
+    private fun processFile(
+        file: DocumentFile,
+        playlistUri: String,
+        playlistName: String,
+        existingFiles: Map<String, List<AudioFileEntity>>,
+        output: MutableList<AudioFileEntity>
+    ) {
+        val fileUri = file.uri.toString()
+        val existingEntries = existingFiles[fileUri]
+        
+        if (existingEntries == null) {
+            val chapters = extractChapters(file)
+            if (chapters.isEmpty()) {
+                val duration = getDuration(file.uri)
+                val metadata = getBasicMetadata(file.uri)
+                output.add(AudioFileEntity(
+                    id = fileUri,
+                    uri = fileUri,
+                    playlistUri = playlistUri,
+                    displayName = file.name ?: "Unknown",
+                    artist = metadata.artist ?: playlistName,
+                    title = metadata.title ?: file.name?.substringBeforeLast(".") ?: "Unknown",
+                    duration = duration,
+                    startOffsetMs = 0L
+                ))
+            } else {
+                // Multi-chapter file (M4B/M4A)
+                chapters.forEach { chapter ->
+                    output.add(AudioFileEntity(
+                        id = "${fileUri}_${chapter.startOffsetMs}",
+                        uri = fileUri,
+                        playlistUri = playlistUri,
+                        displayName = chapter.title,
+                        artist = playlistName,
+                        title = chapter.title,
+                        duration = chapter.duration,
+                        startOffsetMs = chapter.startOffsetMs
+                    ))
+                }
             }
         }
     }
@@ -136,6 +158,22 @@ class AudioBookRepository(private val context: Context) {
             retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLong() ?: 0L
         } catch (e: Exception) {
             0L
+        } finally {
+            retriever.release()
+        }
+    }
+
+    private data class BasicMetadata(val title: String?, val artist: String?)
+
+    private fun getBasicMetadata(uri: Uri): BasicMetadata {
+        val retriever = MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(context, uri)
+            val title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+            val artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+            BasicMetadata(title, artist)
+        } catch (e: Exception) {
+            BasicMetadata(null, null)
         } finally {
             retriever.release()
         }
@@ -165,10 +203,7 @@ class AudioBookRepository(private val context: Context) {
 
             if (chapterTrackIndex != -1) {
                 extractor.selectTrack(chapterTrackIndex)
-                val buffer = ByteBuffer.allocate(1024)
-                
-                var startTime = 0L
-                var currentTitle = ""
+                val buffer = ByteBuffer.allocate(2048)
                 
                 while (true) {
                     val sampleTime = extractor.sampleTime
@@ -176,7 +211,7 @@ class AudioBookRepository(private val context: Context) {
                     
                     val sampleSize = extractor.readSampleData(buffer, 0)
                     if (sampleSize > 0) {
-                        // The first 2 bytes are often the length of the string
+                        // The first 2 bytes are usually the length of the string in text tracks
                         val textLength = if (sampleSize >= 2) buffer.getShort(0).toInt() and 0xFFFF else 0
                         val title = if (textLength > 0 && textLength <= sampleSize - 2) {
                             val bytes = ByteArray(textLength)
@@ -225,7 +260,7 @@ class AudioBookRepository(private val context: Context) {
 
     private fun isAudioFile(fileName: String?): Boolean {
         return fileName?.lowercase()?.let { 
-            it.endsWith(".mp3") || it.endsWith(".m4a") || it.endsWith(".m4b") || it.endsWith(".wav")
+            it.endsWith(".mp3") || it.endsWith(".m4a") || it.endsWith(".m4b") || it.endsWith(".wav") || it.endsWith(".aac")
         } ?: false
     }
 
