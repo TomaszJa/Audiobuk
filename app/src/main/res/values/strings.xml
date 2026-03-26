@@ -12,6 +12,10 @@
     <string name="toggle_view_mode">Toggle view mode</string>
     <string name="sort_order">Sort order</string>
     <string name="tracks_count">%1$d tracks</string>
+    <string name="progress_percent">%1$d%%</string>
+    <string name="finished">Finished</string>
+    <string name="hide_finished">Hide finished</string>
+    <string name="show_finished">Show finished</string>
 
     <!-- Player Screen -->
     <string name="playing_now">Playing Now</string>

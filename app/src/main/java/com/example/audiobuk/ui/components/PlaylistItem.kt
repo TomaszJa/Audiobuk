@@ -1,9 +1,14 @@
 package com.example.audiobuk.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -16,12 +21,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.audiobuk.R
 import com.example.audiobuk.model.AudioBook
 
 @Composable
-fun PlaylistItem(audioBook: AudioBook, isGrid: Boolean, onClick: () -> Unit) {
+fun PlaylistItem(audioBook: AudioBook, progress: Int, isGrid: Boolean, onClick: () -> Unit) {
     val firstTrack = audioBook.audioFiles.firstOrNull()
+    val isFinished = progress >= 100
     
     if (isGrid) {
         Card(
@@ -38,6 +45,34 @@ fun PlaylistItem(audioBook: AudioBook, isGrid: Boolean, onClick: () -> Unit) {
                     contentScale = ContentScale.Crop
                 )
                 
+                // Progress Indicator (Top Right)
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(4.dp)
+                        .background(
+                            color = Color.Black.copy(alpha = 0.6f),
+                            shape = CircleShape
+                        )
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    if (isFinished) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = stringResource(R.string.finished),
+                            tint = Color.Green,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    } else {
+                        Text(
+                            text = stringResource(R.string.progress_percent, progress),
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
                 Surface(
                     color = Color.Black.copy(alpha = 0.6f),
                     modifier = Modifier
@@ -103,6 +138,24 @@ fun PlaylistItem(audioBook: AudioBook, isGrid: Boolean, onClick: () -> Unit) {
                         text = stringResource(R.string.tracks_count, audioBook.audioFiles.size),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // Progress Indicator
+                if (isFinished) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = stringResource(R.string.finished),
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.progress_percent, progress),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 8.dp)
                     )
                 }
             }
