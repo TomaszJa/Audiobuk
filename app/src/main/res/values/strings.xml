@@ -47,6 +47,11 @@
     <string name="help_step_timer">Set a sleep timer or choose to stop playback at the end of the chapter.</string>
     <string name="help_step_browse">View and navigate through all chapters in the book.</string>
     <string name="help_step_controls">Standard playback controls to play, pause, skip, or rewind.</string>
+    <string name="help_step_lib_filter">Toggle visibility of finished books to declutter your library.</string>
+    <string name="help_step_lib_sort">Change the sorting order of your audiobooks (A-Z or Z-A).</string>
+    <string name="help_step_lib_view">Switch between Grid and List views.</string>
+    <string name="help_step_lib_root">Select or change the root folder where your audiobooks are stored.</string>
+    <string name="help_step_lib_search">Quickly find an audiobook by title or author.</string>
     <string name="skip">SKIP</string>
     <string name="finish">FINISH</string>
     <string name="next_step">NEXT</string>
