@@ -50,6 +50,18 @@ interface MusicDao {
     @Query("DELETE FROM audio_files WHERE playlistUri = :playlistUri")
     suspend fun deleteAudioFilesForPlaylist(playlistUri: String)
 
+    @Query("DELETE FROM playlists")
+    suspend fun deleteAllPlaylists()
+
+    @Query("DELETE FROM audio_files")
+    suspend fun deleteAllAudioFiles()
+
+    @Transaction
+    suspend fun clearDatabase() {
+        deleteAllAudioFiles()
+        deleteAllPlaylists()
+    }
+
     @Transaction
     suspend fun deletePlaylistCompletely(uri: String) {
         deleteAudioFilesForPlaylist(uri)
@@ -63,7 +75,7 @@ interface MusicDao {
     }
 }
 
-@Database(entities = [PlaylistEntity::class, AudioFileEntity::class], version = 2)
+@Database(entities = [PlaylistEntity::class, AudioFileEntity::class], version = 3)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun musicDao(): MusicDao
 
