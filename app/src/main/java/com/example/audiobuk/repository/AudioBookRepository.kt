@@ -258,6 +258,10 @@ class AudioBookRepository(private val context: Context) {
         }
     }
 
+    suspend fun clearDatabase() = withContext(Dispatchers.IO) {
+        musicDao.clearDatabase()
+    }
+
     private fun isAudioFile(fileName: String?): Boolean {
         return fileName?.lowercase()?.let { 
             it.endsWith(".mp3") || it.endsWith(".m4a") || it.endsWith(".m4b") || it.endsWith(".wav") || it.endsWith(".aac")

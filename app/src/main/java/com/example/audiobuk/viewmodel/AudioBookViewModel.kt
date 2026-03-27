@@ -98,6 +98,15 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
 
     init {
+        // Clear database on first run of this version to prevent schema issues
+        val isFirstRun = prefs.getBoolean("first_run_v3", true)
+        if (isFirstRun) {
+            viewModelScope.launch {
+                repository.clearDatabase()
+                prefs.edit().putBoolean("first_run_v3", false).apply()
+            }
+        }
+
         val savedUri = prefs.getString("root_uri", null)
         if (savedUri != null) {
             val uri = Uri.parse(savedUri)
@@ -166,9 +175,12 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
             android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
         )
         prefs.edit().putString("root_uri", uri.toString()).apply()
-        _rootUri.value = uri
-        observePlaylists()
-        refreshLibrary(uri)
+        viewModelScope.launch {
+            repository.clearDatabase() // Explicitly clear when changing root
+            _rootUri.value = uri
+            observePlaylists()
+            refreshLibrary(uri)
+        }
     }
 
     fun refresh() {

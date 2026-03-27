@@ -75,7 +75,7 @@ interface MusicDao {
     }
 }
 
-@Database(entities = [PlaylistEntity::class, AudioFileEntity::class], version = 3)
+@Database(entities = [PlaylistEntity::class, AudioFileEntity::class], version = 4)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun musicDao(): MusicDao
 
