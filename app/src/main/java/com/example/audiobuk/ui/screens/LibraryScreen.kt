@@ -64,15 +64,36 @@ fun LibraryScreen(viewModel: AudioBookViewModel) {
         uri?.let { viewModel.setRootUri(it) }
     }
 
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
+    val permissionsToRequest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        arrayOf(
+            Manifest.permission.READ_MEDIA_AUDIO,
+            Manifest.permission.POST_NOTIFICATIONS
+        )
+    } else {
+        arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
     ) { _ -> }
 
     LaunchedEffect(Unit) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
+        val permissionsNotGranted = permissionsToRequest.filter {
+            ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (permissionsNotGranted.isNotEmpty()) {
+            permissionLauncher.launch(permissionsNotGranted.toTypedArray())
+        }
+    }
+
+    fun launchDirectoryPicker() {
+        val permissionsNotGranted = permissionsToRequest.filter {
+            ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (permissionsNotGranted.isEmpty()) {
+            dirPickerLauncher.launch(null)
+        } else {
+            permissionLauncher.launch(permissionsNotGranted.toTypedArray())
         }
     }
 
@@ -139,7 +160,7 @@ fun LibraryScreen(viewModel: AudioBookViewModel) {
                                 )
                             }
                             IconButton(
-                                onClick = { dirPickerLauncher.launch(null) },
+                                onClick = { launchDirectoryPicker() },
                                 modifier = Modifier.onGloballyPositioned { targetCoordinates[HelpTarget.LIB_ROOT] = it }
                             ) {
                                 Icon(Icons.Default.Folder, contentDescription = stringResource(R.string.change_root_directory))
@@ -178,7 +199,7 @@ fun LibraryScreen(viewModel: AudioBookViewModel) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(stringResource(R.string.select_root_directory_prompt))
                                 Button(
-                                    onClick = { dirPickerLauncher.launch(null) },
+                                    onClick = { launchDirectoryPicker() },
                                     modifier = Modifier.padding(top = 16.dp)
                                 ) {
                                     Text(stringResource(R.string.select_directory))
