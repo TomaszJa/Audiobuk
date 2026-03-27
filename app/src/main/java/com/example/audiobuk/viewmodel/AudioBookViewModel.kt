@@ -2,13 +2,16 @@ package com.example.audiobuk.viewmodel
 
 import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.audiobuk.model.AudioFile
 import com.example.audiobuk.model.AudioBook
 import com.example.audiobuk.player.AudioPlayer
 import com.example.audiobuk.repository.AudioBookRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -99,11 +102,11 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
 
     init {
         // Clear database on first run of this version to prevent schema issues
-        val isFirstRun = prefs.getBoolean("first_run_v3", true)
+        val isFirstRun = prefs.getBoolean("first_run_v5", true)
         if (isFirstRun) {
             viewModelScope.launch {
                 repository.clearDatabase()
-                prefs.edit().putBoolean("first_run_v3", false).apply()
+                prefs.edit().putBoolean("first_run_v5", false).apply()
             }
         }
 
@@ -128,8 +131,10 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    private var observeJob: Job? = null
     private fun observePlaylists() {
-        viewModelScope.launch {
+        observeJob?.cancel()
+        observeJob = viewModelScope.launch {
             repository.getPlaylistsFlow().collectLatest {
                 _playlists.value = it
                 val currentTrackId = player.currentTrack.value?.id
@@ -170,16 +175,20 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun setRootUri(uri: Uri) {
-        getApplication<Application>().contentResolver.takePersistableUriPermission(
-            uri,
-            android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-        )
-        prefs.edit().putString("root_uri", uri.toString()).apply()
-        viewModelScope.launch {
-            repository.clearDatabase() // Explicitly clear when changing root
-            _rootUri.value = uri
-            observePlaylists()
-            refreshLibrary(uri)
+        try {
+            getApplication<Application>().contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+            prefs.edit().putString("root_uri", uri.toString()).apply()
+            viewModelScope.launch {
+                repository.clearDatabase() // Explicitly clear when changing root
+                _rootUri.value = uri
+                observePlaylists()
+                refreshLibrary(uri)
+            }
+        } catch (e: Exception) {
+            Log.e("AudioBookViewModel", "Failed to take permission for URI: $uri", e)
         }
     }
 
