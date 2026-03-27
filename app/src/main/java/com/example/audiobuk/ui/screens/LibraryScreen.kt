@@ -11,15 +11,11 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
@@ -117,80 +113,24 @@ fun LibraryScreen(viewModel: AudioBookViewModel) {
                 modifier = Modifier.padding(innerPadding)
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = stringResource(R.string.my_library),
-                            style = MaterialTheme.typography.headlineMedium
-                        )
-                        Row {
-                            IconButton(onClick = { currentHelpStepIndex = 0 }) {
-                                Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = stringResource(R.string.help))
-                            }
-                            IconButton(
-                                onClick = { viewModel.toggleHideFinished() },
-                                modifier = Modifier.onGloballyPositioned { targetCoordinates[HelpTarget.LIB_FILTER] = it }
-                            ) {
-                                Icon(
-                                    imageVector = if (hideFinished) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = if (hideFinished) stringResource(R.string.show_finished) else stringResource(R.string.hide_finished)
-                                )
-                            }
-                            IconButton(
-                                onClick = { viewModel.toggleSortOrder() },
-                                modifier = Modifier.onGloballyPositioned { targetCoordinates[HelpTarget.LIB_SORT] = it }
-                            ) {
-                                Icon(
-                                    imageVector = if (sortOrder == SortOrder.ASCENDING) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
-                                    contentDescription = stringResource(R.string.sort_order)
-                                )
-                            }
-                            IconButton(
-                                onClick = { viewModel.toggleViewMode() },
-                                modifier = Modifier.onGloballyPositioned { targetCoordinates[HelpTarget.LIB_VIEW] = it }
-                            ) {
-                                Icon(
-                                    if (isGridView) Icons.Default.ViewList else Icons.Default.GridView,
-                                    contentDescription = stringResource(R.string.toggle_view_mode)
-                                )
-                            }
-                            IconButton(
-                                onClick = { launchDirectoryPicker() },
-                                modifier = Modifier.onGloballyPositioned { targetCoordinates[HelpTarget.LIB_ROOT] = it }
-                            ) {
-                                Icon(Icons.Default.Folder, contentDescription = stringResource(R.string.change_root_directory))
-                            }
-                        }
-                    }
+                    LibraryHeader(
+                        sortOrder = sortOrder,
+                        isGridView = isGridView,
+                        hideFinished = hideFinished,
+                        onHelpClick = { currentHelpStepIndex = 0 },
+                        onToggleHideFinished = { viewModel.toggleHideFinished() },
+                        onToggleSortOrder = { viewModel.toggleSortOrder() },
+                        onToggleViewMode = { viewModel.toggleViewMode() },
+                        onChangeRootDirectory = { launchDirectoryPicker() },
+                        onGloballyPositioned = { target, coords -> targetCoordinates[target] = coords }
+                    )
 
                     if (rootUri != null) {
-                        TextField(
-                            value = searchQuery,
-                            onValueChange = { viewModel.setSearchQuery(it) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                                .onGloballyPositioned { targetCoordinates[HelpTarget.LIB_SEARCH] = it },
-                            placeholder = { Text(stringResource(R.string.search_audiobooks)) },
-                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                            trailingIcon = {
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear_search))
-                                    }
-                                }
-                            },
-                            colors = TextFieldDefaults.colors(
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
-                            ),
-                            shape = MaterialTheme.shapes.medium,
-                            singleLine = true
+                        AudiobookSearchBar(
+                            query = searchQuery,
+                            onQueryChange = { viewModel.setSearchQuery(it) },
+                            onClearQuery = { viewModel.setSearchQuery("") },
+                            onGloballyPositioned = { targetCoordinates[HelpTarget.LIB_SEARCH] = it }
                         )
                     }
 
@@ -216,7 +156,7 @@ fun LibraryScreen(viewModel: AudioBookViewModel) {
                             LazyVerticalGrid(
                                 columns = GridCells.Fixed(columns),
                                 modifier = Modifier.fillMaxSize(),
-                                contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)
+                                contentPadding = PaddingValues(8.dp)
                             ) {
                                 items(playlists) { playlist ->
                                     PlaylistItem(
@@ -231,7 +171,7 @@ fun LibraryScreen(viewModel: AudioBookViewModel) {
                         } else {
                             LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
-                                contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)
+                                contentPadding = PaddingValues(8.dp)
                             ) {
                                 items(playlists) { playlist ->
                                     PlaylistItem(

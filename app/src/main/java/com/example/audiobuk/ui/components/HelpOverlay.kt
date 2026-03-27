@@ -25,16 +25,6 @@ import androidx.compose.ui.unit.sp
 import com.example.audiobuk.R
 import com.example.audiobuk.ui.theme.MidnightGreen
 
-enum class HelpTarget {
-    PRECISION_SEEK, CHAPTER_ZOOM, SPEED, TIMER, BROWSE, CONTROLS,
-    LIB_FILTER, LIB_SORT, LIB_VIEW, LIB_ROOT, LIB_SEARCH, LIB_PLAYBACK_BAR
-}
-
-data class HelpStep(
-    val target: HelpTarget,
-    val text: String
-)
-
 @Composable
 fun HelpOverlay(
     step: HelpStep,
@@ -71,7 +61,6 @@ fun HelpOverlay(
                 val arrowX = position.x + size.width / 2
                 
                 // If the target is at the bottom (like PlaybackBar), point UP
-                // or if it's the PRECISION_SEEK step
                 val pointUp = step.target == HelpTarget.PRECISION_SEEK || step.target == HelpTarget.LIB_PLAYBACK_BAR
                 
                 val startY: Float
@@ -79,15 +68,13 @@ fun HelpOverlay(
                 val wingTipY: Float
                 
                 if (pointUp) {
-                    // Arrow pointing UP from the element
                     startY = position.y - 10f - arrowOffset
                     endY = position.y - 70f - arrowOffset
-                    wingTipY = endY + 20f // Wings below tip
+                    wingTipY = endY + 20f
                 } else {
-                    // Arrow pointing DOWN to the element
                     startY = position.y - 70f - arrowOffset
                     endY = position.y - 10f - arrowOffset
-                    wingTipY = endY - 20f // Wings above tip
+                    wingTipY = endY - 20f
                 }
 
                 drawLine(
@@ -133,7 +120,7 @@ fun HelpOverlay(
                     )
                     Text(
                         text = step.text,
-                        color = Color.White, // Force white text for visibility
+                        color = Color.White,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center

@@ -1,43 +1,37 @@
 package com.example.audiobuk.viewmodel
 
 import android.app.Application
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.audiobuk.model.AudioFile
 import com.example.audiobuk.model.AudioBook
+import com.example.audiobuk.model.AudioFile
 import com.example.audiobuk.player.AudioPlayer
 import com.example.audiobuk.repository.AudioBookRepository
+import com.example.audiobuk.util.PreferenceManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
-enum class SortOrder {
-    ASCENDING, DESCENDING
-}
-
 class AudioBookViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AudioBookRepository(application)
-    private val prefs = application.getSharedPreferences("audiobuk_prefs", Context.MODE_PRIVATE)
+    private val prefs = PreferenceManager(application)
     
     private val _playlists = MutableStateFlow<List<AudioBook>>(emptyList())
     
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
 
-    private val _sortOrder = MutableStateFlow(
-        SortOrder.valueOf(prefs.getString("sort_order", SortOrder.ASCENDING.name) ?: SortOrder.ASCENDING.name)
-    )
+    private val _sortOrder = MutableStateFlow(prefs.sortOrder)
     val sortOrder: StateFlow<SortOrder> = _sortOrder
 
-    private val _isGridView = MutableStateFlow(prefs.getBoolean("is_grid_view", true))
+    private val _isGridView = MutableStateFlow(prefs.isGridView)
     val isGridView: StateFlow<Boolean> = _isGridView
 
-    private val _hideFinished = MutableStateFlow(prefs.getBoolean("hide_finished", false))
+    private val _hideFinished = MutableStateFlow(prefs.hideFinished)
     val hideFinished: StateFlow<Boolean> = _hideFinished
 
     val filteredPlaylists: StateFlow<List<AudioBook>> = combine(
@@ -101,24 +95,24 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
 
     init {
-        // Clear database on first run of this version to prevent schema issues
-        val isFirstRun = prefs.getBoolean("first_run_v5", true)
-        if (isFirstRun) {
+        // Handle migration or first run cleanup
+        if (prefs.isFirstRun("v5")) {
             viewModelScope.launch {
                 repository.clearDatabase()
-                prefs.edit().putBoolean("first_run_v5", false).apply()
             }
         }
 
-        val savedUri = prefs.getString("root_uri", null)
+        val savedUri = prefs.rootUri
         if (savedUri != null) {
-            val uri = Uri.parse(savedUri)
-            _rootUri.value = uri
+            _rootUri.value = savedUri
             observePlaylists()
-            refreshLibrary(uri)
+            refreshLibrary(savedUri)
         }
         
-        // Save progress every 10 seconds as a safety net
+        startProgressSafetyNet()
+    }
+
+    private fun startProgressSafetyNet() {
         viewModelScope.launch {
             while (true) {
                 delay(10000)
@@ -161,17 +155,17 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun toggleSortOrder() {
         _sortOrder.value = if (_sortOrder.value == SortOrder.ASCENDING) SortOrder.DESCENDING else SortOrder.ASCENDING
-        prefs.edit().putString("sort_order", _sortOrder.value.name).apply()
+        prefs.sortOrder = _sortOrder.value
     }
 
     fun toggleViewMode() {
         _isGridView.value = !_isGridView.value
-        prefs.edit().putBoolean("is_grid_view", _isGridView.value).apply()
+        prefs.isGridView = _isGridView.value
     }
 
     fun toggleHideFinished() {
         _hideFinished.value = !_hideFinished.value
-        prefs.edit().putBoolean("hide_finished", _hideFinished.value).apply()
+        prefs.hideFinished = _hideFinished.value
     }
 
     fun setRootUri(uri: Uri) {
@@ -180,9 +174,9 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
                 uri,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             )
-            prefs.edit().putString("root_uri", uri.toString()).apply()
+            prefs.rootUri = uri
             viewModelScope.launch {
-                repository.clearDatabase() // Explicitly clear when changing root
+                repository.clearDatabase()
                 _rootUri.value = uri
                 observePlaylists()
                 refreshLibrary(uri)
@@ -193,10 +187,7 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun refresh() {
-        val uri = _rootUri.value
-        if (uri != null) {
-            refreshLibrary(uri)
-        }
+        _rootUri.value?.let { refreshLibrary(it) }
     }
 
     private fun refreshLibrary(uri: Uri) {
@@ -217,10 +208,8 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
                 startTrackId = audioBook.lastPlayedTrackId ?: audioBook.audioFiles.find { it.uri == audioBook.lastPlayedUri }?.id,
                 startPositionMs = audioBook.lastPositionMs
             )
-            _currentAudioBook.value = audioBook
-        } else {
-            _currentAudioBook.value = audioBook
         }
+        _currentAudioBook.value = audioBook
         _showPlayerScreen.value = true
     }
 
@@ -243,7 +232,6 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
             }
             accumulated += audioFile.duration
         }
-        // If it's at the very end
         player.seekTo(book.audioFiles.size - 1, book.audioFiles.last().duration)
     }
 
@@ -276,13 +264,17 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun setSleepTimer(minutes: Int?) {
-        if (minutes == null) {
-            player.setSleepTimer(0)
-            player.setStopAfterChapter(false)
-        } else if (minutes == -1) {
-            player.setStopAfterChapter(true)
-        } else {
-            player.setSleepTimer(minutes)
+        when (minutes) {
+            null -> {
+                player.setSleepTimer(0)
+                player.setStopAfterChapter(false)
+            }
+            -1 -> {
+                player.setStopAfterChapter(true)
+            }
+            else -> {
+                player.setSleepTimer(minutes)
+            }
         }
     }
 
@@ -290,17 +282,15 @@ class AudioBookViewModel(application: Application) : AndroidViewModel(applicatio
         val totalDuration = audioBook.audioFiles.sumOf { it.duration }
         if (totalDuration == 0L) return 0
         
-        val precedingDuration = if (audioBook.lastPlayedTrackId != null) {
+        val precedingDuration = audioBook.lastPlayedTrackId?.let { id ->
             audioBook.audioFiles
-                .takeWhile { it.id != audioBook.lastPlayedTrackId }
+                .takeWhile { it.id != id }
                 .sumOf { it.duration }
-        } else if (audioBook.lastPlayedUri != null) {
+        } ?: audioBook.lastPlayedUri?.let { uri ->
             audioBook.audioFiles
-                .takeWhile { it.uri != audioBook.lastPlayedUri }
+                .takeWhile { it.uri != uri }
                 .sumOf { it.duration }
-        } else {
-            0L
-        }
+        } ?: 0L
         
         val currentPosition = precedingDuration + audioBook.lastPositionMs
         return ((currentPosition * 100) / totalDuration).toInt().coerceIn(0, 100)
